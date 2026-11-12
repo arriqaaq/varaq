@@ -44,6 +44,10 @@ The larger instances in [`Deep/Configs.lean`](Deep/Configs.lean) take longer:
 and every night, and `deep.sh` every night and on demand (Actions → Veil model checking →
 Run workflow).
 
+When a nightly run fails, it opens an issue labelled `veil` with the counterexample traces
+(`.github/scripts/veil-issue.sh`). While that issue is open, later failures add a comment to it
+instead of opening another; close it once the cause is fixed.
+
 ## Checking the checks
 
 Each model was run against deliberately broken versions of itself, and each broken version was

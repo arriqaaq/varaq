@@ -93,3 +93,31 @@ jobs:
           name: veil-deep-results
           path: verify/deep-results
           if-no-files-found: ignore
+
+  # On a failed nightly run, open an issue labelled `veil` with the
+  # counterexample traces, or comment on the one already open.
+  report:
+    needs: [model-check, deep]
+    if: >-
+      always() && github.event_name == 'schedule' &&
+      (needs.model-check.result == 'failure' || needs.deep.result == 'failure')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: File or update the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: .github/scripts/veil-issue.sh artifacts
