@@ -1,0 +1,123 @@
+name: Veil model checking
+
+# Model-checks the protocol models in `verify/` with Veil
+# (https://github.com/verse-lab/veil). See verify/README.md.
+#
+# - `model-check`: the instances in the models themselves. Each model runs its
+#   `#model_check` while it is elaborated, so `lake build` fails on a
+#   violation. Runs on pull requests that touch the models, and nightly.
+# - `deep`: the larger instances in verify/Deep/Configs.lean, nightly and on
+#   demand. A check that runs out of time is reported, not failed.
+
+on:
+  schedule:
+    - cron: "17 3 * * *" # every night at 03:17 UTC
+  workflow_dispatch:
+    inputs:
+      deep_timeout:
+        description: "Seconds each deep check may run"
+        default: "2400"
+  pull_request:
+    paths:
+      - "verify/**"
+      - ".github/workflows/veil.yml"
+  push:
+    branches: [main]
+    paths:
+      - "verify/**"
+      - ".github/workflows/veil.yml"
+
+concurrency:
+  group: veil-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash # -eo pipefail, so a failure before `tee` fails the step
+    working-directory: verify
+
+jobs:
+  model-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-veil
+      - name: Model-check
+        run: lake build 2>&1 | tee model-check.log
+      - name: Summarise
+        if: always()
+        run: |
+          {
+            echo "## Veil model checking"
+            echo '```'
+            grep -E "No violation|Violation|error" model-check.log | grep -v "capitalized index" \
+              || echo "(no model-checker output)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: veil-model-check-log
+          path: verify/model-check.log
+          if-no-files-found: ignore
+
+  deep:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-veil
+      - name: Build the models
+        run: lake build
+      - name: Deep model-check
+        env:
+          DEEP_TIMEOUT: ${{ github.event.inputs.deep_timeout || '2400' }}
+          DEEP_OUT: deep-results
+        run: ./deep.sh
+      - name: Summarise
+        if: always()
+        run: |
+          {
+            echo "## Veil deep model checking"
+            echo '```'
+            cat deep-results/summary.txt 2>/dev/null || echo "(no results)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: veil-deep-results
+          path: verify/deep-results
+          if-no-files-found: ignore
+
+  # On a failed nightly run, open an issue labelled `veil` with the
+  # counterexample traces, or comment on the one already open.
+  report:
+    needs: [model-check, deep]
+    if: >-
+      always() && github.event_name == 'schedule' &&
+      (needs.model-check.result == 'failure' || needs.deep.result == 'failure')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: File or update the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: .github/scripts/veil-issue.sh artifacts

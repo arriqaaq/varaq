@@ -1,0 +1,33 @@
+name: Set up Veil
+description: Install elan and the system packages Veil needs, and build Veil (cached).
+runs:
+  using: composite
+  steps:
+    - name: Install system dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends clang lld libc++-dev libc++abi-dev
+
+    - name: Install elan
+      shell: bash
+      run: |
+        set -o pipefail
+        curl -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+          | sh -s -- -y --default-toolchain none
+        echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+    # Veil and its dependencies take a while to build from source; keep them
+    # between runs. The key changes with the toolchain or a pinned dependency.
+    # The models themselves (verify/.lake/build) are not cached, so every run
+    # checks them again.
+    - name: Cache Lake packages
+      uses: actions/cache@v4
+      with:
+        path: verify/.lake/packages
+        key: lake-${{ runner.os }}-${{ hashFiles('verify/lean-toolchain', 'verify/lake-manifest.json') }}
+
+    - name: Build Veil
+      shell: bash
+      working-directory: verify
+      run: lake build Veil
