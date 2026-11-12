@@ -10,4 +10,4 @@ Larger instances of the models, too slow for every pull request. Each
 -/
 
 #mc_config VaraqLatch { thread := Fin 3 } { maxWrites := 4 }
-#mc_config VaraqMvcc { worker := Fin 2 } { maxClock := 5 } (maxDepth := 24)
+#mc_config VaraqMvcc { worker := Fin 2 } { maxClock := 5 } (maxDepth := 40)
