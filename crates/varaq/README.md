@@ -24,20 +24,23 @@ the project page.
 
 ## What it does
 
-- **Reads check versions, not locks.** A lookup reads each page under an optimistic latch: it
-  notes the page's version, copies what it needs and checks the version again, retrying if a
-  writer moved it. After two refused tries it holds the leaf shared.
+- **Reads check versions.** A lookup reads each page under an optimistic latch: it notes the
+  page's version, copies what it needs and checks the version again, retrying if a writer moved
+  it. After two refused tries it holds the leaf shared.
 - **Larger than memory.** When the pool is full, pages sampled at random cool, and only those left
   untouched are evicted. A page that is not in memory costs one 4 KiB read, shared by every thread
-  that misses on it.
+  that misses on it; when no frame is free, the thread that missed first makes room, which can
+  mean writing a changed page back.
 - **Transactions.** Snapshot isolation for every transaction; of two that write the same key, the
   first wins and the second is refused with `Error::Conflict` when it writes. Write skew is
   possible: snapshot isolation is weaker than serializability.
 - **Durable by default.** A commit returns once its log record is on the device, and a store
   reopens after a crash with every acknowledged commit in place.
-- **Correct or refuse.** Every data, version and catalog page is checked against a CRC-32C over its
-  bytes and its page id when it is read; log records carry their own. A torn page, a log recovery cannot read or a store whose creation never finished
-  is reported as an error, never served as data.
+- **Correct or refuse.** Every data and version page is checked against a CRC-32C over its bytes
+  and its page id when it is read, and log records carry their own. A page that fails is reported
+  as an error and never served as data (recovery rebuilds it from the log when the log holds its
+  image), and so is a store whose creation never finished. A log record that fails its check ends
+  that worker's log at that point, as a torn tail does.
 - **Runs where your code runs.** Linux, macOS and other Unix systems over ordinary files; an
   optional `io_uring` read path on Linux; the browser through WebAssembly and OPFS.
 
@@ -52,7 +55,7 @@ use varaq::tree::Tree;
 use varaq::tree::scan::Step;
 
 fn main() -> Result<(), varaq::Error> {
-    // A tree with room for 1,024 pages (4 KiB each) in memory.
+    // A buffer pool of 1,024 pages (4 KiB each); the pages it evicts go to an in-memory store.
     let tree = Tree::with_capacity(1_024)?;
 
     tree.insert(b"apple", b"red")?;
@@ -83,9 +86,8 @@ fn main() -> Result<(), varaq::Error> {
     // One worker, a pool of 1,024 pages.
     let db = Db::with_capacity(1, 1_024)?;
 
-    // Every thread that writes is bound to a worker for as long as it holds the guard.
+    // Each call names the worker it runs on.
     let me = WorkerId(0);
-    let _bound = varaq::wal::worker::bind(0);
 
     // Single writes commit on their own.
     db.insert(me, b"apple", b"1")?;
@@ -134,10 +136,10 @@ fn devices(dir: &Path) -> std::io::Result<Devices<File>> {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let dir = std::env::temp_dir().join(format!("varaq-readme-{}", std::process::id()));
     std::fs::create_dir_all(&dir)?;
-    let _bound = varaq::wal::worker::bind(0);
 
     {
-        // One worker, 1,024 pages of memory, a 4 MiB log ring per worker.
+        // One worker, a pool of 1,024 pages (and as many again for old versions),
+        // a 4 MiB log ring per worker.
         let db = devices(&dir)?.create(1, 1_024, 4 << 20)?;
         db.insert(WorkerId(0), b"hello", b"disk")?;
     } // Dropping the store closes it.
@@ -152,15 +154,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-`open` refuses a directory with no store (`Refusal::NoSuchStore`), a store another process holds
-(`Refusal::StoreBusy`) and a create that was cut short (`Refusal::IncompleteCreate`, which
-`Devices::destroy` clears). `create` refuses files that already hold a store.
+`open` refuses a directory with no store (`Refusal::NoSuchStore`) and a create that was cut short
+(`Refusal::IncompleteCreate`, which `Devices::destroy` clears); `create` refuses files that are not
+all empty (`Refusal::StoreExists`).
+
+> **One engine per store.** Over ordinary files nothing stops a second process, or a second
+> `Devices` in the same process, from opening the same files, and doing so corrupts the store.
+> Only the browser backend refuses a second engine (`Refusal::StoreBusy`).
 
 ### Many threads
 
 A store has a fixed number of workers, chosen when it is made. A worker runs one transaction at a
-time, so each thread that uses the store binds itself to a different worker; the store is shared
-by reference.
+time, so threads that use the store at the same time pass different `WorkerId`s; the store is
+shared by reference.
 
 ```rust
 use varaq::WorkerId;
@@ -174,7 +180,6 @@ fn main() -> Result<(), varaq::Error> {
         for w in 0..workers {
             let db = &db;
             s.spawn(move || {
-                let _bound = varaq::wal::worker::bind(w as u16);
                 let me = WorkerId(w);
                 for i in 0u32..1_000 {
                     let key = [&(w as u32).to_be_bytes()[..], &i.to_be_bytes()].concat();
@@ -185,7 +190,6 @@ fn main() -> Result<(), varaq::Error> {
     });
 
     let me = WorkerId(0);
-    let _bound = varaq::wal::worker::bind(0);
     assert_eq!(db.get(me, &[0, 0, 0, 3, 0, 0, 0, 7])?, Some(b"value".to_vec()));
     Ok(())
 }
@@ -204,7 +208,6 @@ use varaq::txn::db::{Db, Durability};
 fn main() -> Result<(), varaq::Error> {
     let db = Db::with_capacity(1, 1_024)?.with_durability(Durability::Eventual);
     let me = WorkerId(0);
-    let _bound = varaq::wal::worker::bind(0);
 
     let mut tx = db.begin(me)?;
     tx.insert(b"order:1", b"paid")?;
@@ -246,7 +249,6 @@ async fn run() -> Result<(), Refusal> {
         }
         Err(refused) => return Err(refused),
     };
-    let _bound = varaq::wal::worker::bind(0);
     db.insert(WorkerId(0), b"hello", b"opfs")?;
     Ok(())
 }
@@ -269,7 +271,7 @@ pace checkpoints.
 **Pages.** The tree is made of 4 KiB slotted pages: a 48-byte header, a directory of 12-byte slots
 in key order, and keys and values in a heap growing from the end of the page. Fence keys bound what
 each page may hold, so the prefix its keys share is stored once, and each slot keeps the first four
-bytes of its key as an integer so a binary search compares integers.
+bytes of its key after that prefix as an integer, so a binary search compares integers first.
 
 **Translation.** A parent names its children by page id, so a page may be named from more than one
 place: each leaf names its right neighbour, and a scan walks the leaf level. The id is turned into
@@ -286,14 +288,17 @@ committing never has to rewrite a version.
 
 **The log.** Each worker appends to its own ring; records for the same page are ordered across
 workers by a clock kept per page (the GSN). One barrier at a time makes the ring writes finished
-before it durable. A checkpoint writes the pool back about a tenth at a time, so the store never
-stops for one, and recovery starts from the oldest mark the increments recorded.
+before it durable. A checkpoint writes the pool back in increments of about a tenth of its
+partitions. With `Db::start_checkpointer` a background thread runs them; without it, the committing
+thread that crosses the next step runs one itself, and a writer whose log ring is full runs a whole
+checkpoint first. Recovery starts from the oldest mark the increments recorded.
 
 <p align="center"><img src="https://raw.githubusercontent.com/arriqaaq/varaq/main/docs/images/values.png" alt="Three homes for a value: in the leaf, on a value page, or as a contiguous run of pages" width="100%"></p>
 
 **Deletes.** A delete installs a removal; once every snapshot is past it and its transaction is
-acknowledged, the entry is removed from its leaf. A leaf left too empty merges with a neighbour, and
-a freed page is written out empty before its id is used again.
+acknowledged, the entry is removed from its leaf. A leaf left too empty is merged with a neighbour when
+both are in memory and their latches are free, and a freed page is written out empty before its id
+is used again.
 
 The design builds on the line of storage-engine research that began with LeanStore: optimistic
 latches, a cooling stage in place of a replacement list, predictive translation, a log per worker
@@ -305,8 +310,8 @@ timestamp, and autonomous commit. The announcement credits each one where it is 
 | Term | What it means |
 |---|---|
 | **Page** | 4 KiB. The unit the tree, the buffer pool and the files work in. |
-| **Pool pages** | How many pages the tree keeps in memory. Each worker's version tree has a pool of its own, of pool pages ÷ workers (at least 64), so a store holds about twice the pool pages in memory. |
-| **Worker** | A slot for one transaction at a time, with its own log ring. A thread binds with `varaq::wal::worker::bind(n)` and passes `WorkerId(n)` to the store; a `begin` on a worker already running a transaction is refused with `Error::WorkerBusy`. |
+| **Pool pages** | How many pages the buffer pool holds. Each worker's version tree has a pool of its own, of pool pages ÷ workers (at least 64), so a store over files holds about twice the pool pages in memory, plus each worker's log ring. A store made with `Db::with_capacity` also keeps the pages it evicts in memory. |
+| **Worker** | A slot for one transaction at a time, with its own log ring. A thread passes `WorkerId(n)` to the store, which binds the thread to that worker for each call; a `begin` on a worker already running a transaction is refused with `Error::WorkerBusy`. |
 | **Log ring** | Each worker's share of the write-ahead log, in bytes. The ring is reused as checkpoints move forward. |
 | **`Error`** | Something the engine refused: a conflict, a corrupt page, a full store, a device failure. |
 | **`Refusal`** | Why a store could not be created, opened or destroyed over its files; wraps `Error` for everything else. |
@@ -316,8 +321,8 @@ timestamp, and autonomous commit. The announcement credits each one where it is 
 | Feature | What it adds |
 |---|---|
 | `opfs` | The browser backend (`varaq::io::opfs`), for `wasm32-unknown-unknown`. |
-| `uring` | An `io_uring` read path on Linux (`varaq::io::uring`): one ring per worker for page misses, over `O_DIRECT` when opened with `open_direct`. |
-| `stats` | Internal counters, kept per thread so they cost little. Off by default. |
+| `uring` | `UringChannel` (`varaq::io::uring`), an `io_uring` read path on Linux. Pass one per worker to `Db::with_channels` and that worker's page misses read through it; `open_direct` opens the file with `O_DIRECT`. |
+| `stats` | Internal counters, striped over 16 cache lines so they cost little. Off by default, and every counter reads 0 without it. |
 
 ## What is inside
 
@@ -328,13 +333,13 @@ timestamp, and autonomous commit. The announcement credits each one where it is 
 | `varaq::wal` | The write-ahead log, a ring per worker, and worker binding. |
 | `varaq::bufmgr` | The buffer manager that moves pages between memory and the files. |
 | `varaq::recovery` | Reopening a store from its checkpoint and log. |
-| `varaq::io` | Backends: files through `pread` and `pwrite`, memory, `io_uring`, OPFS. |
-| `varaq::exec` | Where a worker waits when the page it needs is not in memory. |
+| `varaq::io` | Backends: files through `pread` and `pwrite`, `io_uring`, OPFS. The memory backend is `varaq::store::MemoryStore`. |
+| `varaq::exec` | `ThreadScheduler`, a `Scheduler` that parks a waiting thread; a store given one parks on it while a page is read, the log barrier runs or an acknowledgement is pending. |
 
 ## Examples
 
-The repository has four short programs under `crates/varaq/examples`, each checking its own
-results:
+The repository has four short programs under `crates/varaq/examples`; the three native ones check
+their own results, and the OPFS one reports a refusal to the console:
 
 ```sh
 cargo run --release --example tree    # the tree in memory
@@ -355,7 +360,8 @@ The minimum supported Rust version is 1.95.
 ## Limitations of 0.1
 
 - The miss path is tested for correctness but not yet measured at scale on a dedicated NVMe drive.
-- A long-running reader holds old versions back, and 0.1 does not bound the memory that costs.
+- A long-running reader holds old versions back: until it finishes, the versions file grows, as do
+  each worker's list of commits and queue of removals in memory, and 0.1 bounds neither.
 - Single-key deletes and most batched writes were slower than SurrealKV's, an LSM-tree, in the
   announcement's measurements.
 - The API and the on-disk format will change before 1.0.

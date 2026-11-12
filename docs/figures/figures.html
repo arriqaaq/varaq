@@ -85,7 +85,7 @@ h2{font-weight:500;font-size:30px;letter-spacing:-.02em;margin:8px 0 6px}
     <div class="lname"><b>B+tree</b><span>each key's newest version</span></div>
     <div class="row">
       <div class="box shared" style="flex:1.3"><h3>4 KiB slotted pages</h3><p>A 48-byte header, 12-byte slots in key order, keys and values in a heap growing from the end. Fence keys bound each page; a shared prefix is stored once.</p></div>
-      <div class="box shared" style="flex:1"><h3>Optimistic latches</h3><p>A reader checks a page's version instead of taking a lock; after two refused tries it holds the leaf shared.</p></div>
+      <div class="box shared" style="flex:1"><h3>Optimistic latches</h3><p>A reader checks a page's version instead of taking its latch; after two refused tries it holds the leaf shared.</p></div>
       <div class="box shared" style="flex:1"><h3>Right links</h3><p>Each leaf names its right neighbour, so a scan walks the leaf level.</p></div>
     </div>
   </div>
@@ -103,9 +103,9 @@ h2{font-weight:500;font-size:30px;letter-spacing:-.02em;margin:8px 0 6px}
     <div class="lname"><b>Devices</b><span>behind two traits</span></div>
     <div class="row">
       <div class="box" style="flex:1"><h3>catalog</h3><p>Two alternating slots: the root, the clock, where recovery starts.</p></div>
-      <div class="box shared" style="flex:1"><h3>log</h3><p>One ring per worker; one barrier (fdatasync) at a time covers the ring writes finished before it.</p></div>
+      <div class="box shared" style="flex:1"><h3>log</h3><p>One ring per worker; one barrier (a data sync) at a time covers the ring writes finished before it.</p></div>
       <div class="box" style="flex:1"><h3>data</h3><p>The tree's pages, each checksummed over its bytes and its id.</p></div>
-      <div class="box" style="flex:1"><h3>versions</h3><p>The version trees' pages; emptied when the store opens.</p></div>
+      <div class="box" style="flex:1"><h3>versions</h3><p>The version trees' pages; the trees start empty when the store opens.</p></div>
     </div>
   </div>
   <div class="legend" style="margin-top:18px"><span><i style="background:var(--card);border:1px solid var(--line)"></i>a worker's own</span><span><i style="border:1px dashed var(--line2)"></i>shared</span><span class="m">files (pread/pwrite) · memory · io_uring read path (Linux) · OPFS (WebAssembly)</span></div>
@@ -124,16 +124,16 @@ h2{font-weight:500;font-size:30px;letter-spacing:-.02em;margin:8px 0 6px}
     <div class="box"><span class="m">root</span><p style="margin-top:6px">search the page · check the version · translate the child</p></div><div class="arrow">→</div>
     <div class="box"><span class="m">inner page</span><p style="margin-top:6px">the same three steps</p></div><div class="arrow">→</div>
     <div class="box"><span class="m">leaf</span><p style="margin-top:6px">the key's newest version</p></div><div class="arrow">→</div>
-    <div class="box"><span class="m">visibility</span><p style="margin-top:6px">walk back in the writer's version tree if the snapshot cannot see it</p></div>
+    <div class="box"><span class="m">visibility</span><p style="margin-top:6px">walk back through the version trees of the workers that replaced it if the snapshot cannot see it</p></div>
   </div>
 </section>
 
 <section id="commit">
   <div class="k">Committing</div>
   <h2>Pre-commit, then acknowledgement</h2>
-  <p class="sub">A version names its writer by worker and start timestamp, so committing rewrites no version: pre-commit is one log record, one clock bump and one entry in the worker's list of commits.</p>
+  <p class="sub">A version names its writer by worker and start timestamp, so committing rewrites no version: pre-commit appends one log record, takes one clock tick and adds one entry to the worker's list of commits.</p>
   <div class="steps">
-    <div class="box hot step"><div class="n">1 · write</div><h3>insert / remove</h3><p>The version it replaces moves to the worker's own version tree; the new version is installed under the leaf's exclusive latch, then one record is appended to the worker's log ring. A write over a version the snapshot cannot see is refused with <span class="m">Conflict</span>.</p></div>
+    <div class="box hot step"><div class="n">1 · write</div><h3>insert / remove</h3><p>The version it replaces moves to the worker's own version tree; the new version is installed under the leaf's exclusive latch, then one change record is appended to the worker's log ring (a split logs its own record before it). A write over a version the snapshot cannot see is refused with <span class="m">Conflict</span>.</p></div>
     <div class="box warm step"><div class="n">2 · pre-commit</div><h3>Visible, worker free</h3><p>The commit record is appended, a commit timestamp is taken from the clock, and one entry in the worker's list of commits publishes every version the transaction wrote. The worker is free for the next transaction at once.</p></div>
     <div class="box ok step"><div class="n">3 · acknowledgement</div><h3>Durable when it returns</h3><p>The client waits until its own record is durable, other workers' logs are durable up to the changes its pages depend on, and every transaction it read from or wrote over is acknowledged. One shared barrier makes the finished ring writes durable.</p></div>
   </div>
@@ -145,8 +145,8 @@ h2{font-weight:500;font-size:30px;letter-spacing:-.02em;margin:8px 0 6px}
   <h2>Three homes for a value</h2>
   <p class="sub">The thresholds count the stored value, which carries a 19-byte version header in front of the client's bytes.</p>
   <div class="steps">
-    <div class="box hot step"><div class="n">in the leaf</div><h3>Small values</h3><p>A value stays in its leaf unless its entry (key, stored value and 12-byte slot) takes more than 506 bytes, an eighth of the page's 4,048-byte data area.</p></div>
-    <div class="box warm step"><div class="n">a value page</div><h3>Larger values</h3><p>A stored value of 253 bytes or more (234 of the client's) moves to a value page that packs several values. The leaf keeps an 8-byte reference and the 11 bytes a snapshot needs to decide visibility.</p></div>
+    <div class="box hot step"><div class="n">in the leaf</div><h3>Small values</h3><p>A value stays in its leaf unless its entry (key, stored value and 12-byte slot) takes more than 506 bytes, an eighth of the page's 4,048-byte data area, and the stored value is at least half of that.</p></div>
+    <div class="box warm step"><div class="n">a value page</div><h3>Larger values</h3><p>A value whose entry passes 506 bytes and whose stored value is 253 bytes or more (234 of the client's) moves to a value page that packs several values. The leaf keeps an 8-byte reference and the 11 bytes a snapshot needs to decide visibility.</p></div>
     <div class="box ok step"><div class="n">a run of pages</div><h3>Past the data area</h3><p>A value whose entry would not fit in 4,048 bytes becomes one contiguous run of pages, kept out of the log and read up to 256 pages (1 MiB) at a time.</p></div>
   </div>
 </section>
