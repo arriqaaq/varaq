@@ -362,8 +362,7 @@ The minimum supported Rust version is 1.95.
 - The miss path is tested for correctness but not yet measured at scale on a dedicated NVMe drive.
 - A long-running reader holds old versions back: until it finishes, the versions file grows, as do
   each worker's list of commits and queue of removals in memory, and 0.1 bounds neither.
-- Single-key deletes and most batched writes were slower than SurrealKV's, an LSM-tree, in the
-  announcement's measurements.
+- Single-key deletes and batched writes improvements.
 - The API and the on-disk format will change before 1.0.
 
 ## License
