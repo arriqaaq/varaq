@@ -1,7 +1,7 @@
-use io::devices::{Devices, Refusal};
 use std::fs::{File, OpenOptions};
 use std::path::Path;
 use varaq::WorkerId;
+use varaq::io::devices::{Devices, Refusal};
 const POOL_PAGES: usize = 1_024;
 const RING_BYTES: usize = 4 << 20;
 fn devices(dir: &Path) -> std::io::Result<Devices<File>> {

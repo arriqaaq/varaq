@@ -168,7 +168,7 @@ impl BufferFrame {
     }
     #[must_use]
     pub fn is_dirty(&self) -> bool {
-        calc::dirty(self.gsn.load(FIELD_LOAD), self.on_disk.load(FIELD_LOAD))
+        crate::calc::dirty(self.gsn.load(FIELD_LOAD), self.on_disk.load(FIELD_LOAD))
     }
     #[must_use]
     pub fn on_disk(&self) -> u64 {

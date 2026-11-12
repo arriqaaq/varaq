@@ -84,16 +84,16 @@ impl PositionalFile for std::fs::File {
         std::fs::File::sync_data(self)
     }
     fn reserve(&self, len: u64) -> std::io::Result<()> {
-        crate::platform::reserve(self, len)
+        crate::io::platform::reserve(self, len)
     }
 }
 #[cfg(unix)]
 #[repr(C, align(4096))]
-pub(crate) struct AlignedPage(pub(crate) [u8; varaq::PAGE_SIZE]);
+pub(crate) struct AlignedPage(pub(crate) [u8; crate::PAGE_SIZE]);
 #[cfg(unix)]
 std::thread_local! {
     static BOUNCE : std::cell::RefCell < Box < AlignedPage >> =
-    std::cell::RefCell::new(Box::new(AlignedPage([0; varaq::PAGE_SIZE])));
+    std::cell::RefCell::new(Box::new(AlignedPage([0; crate::PAGE_SIZE])));
 }
 #[cfg(unix)]
 #[derive(Debug)]
@@ -101,7 +101,7 @@ pub struct DirectFile(pub(crate) std::fs::File);
 #[cfg(unix)]
 impl PositionalFile for DirectFile {
     fn read_at(&self, buf: &mut [u8], at: u64) -> std::io::Result<usize> {
-        let n = buf.len().min(varaq::PAGE_SIZE);
+        let n = buf.len().min(crate::PAGE_SIZE);
         BOUNCE.with(|b| {
             let mut b = b.borrow_mut();
             let got = std::os::unix::fs::FileExt::read_at(&self.0, &mut b.0, at)?;
@@ -113,17 +113,17 @@ impl PositionalFile for DirectFile {
         })
     }
     fn write_at(&self, buf: &[u8], at: u64) -> std::io::Result<usize> {
-        if buf.len() < varaq::PAGE_SIZE {
+        if buf.len() < crate::PAGE_SIZE {
             return Err(std::io::ErrorKind::InvalidInput.into());
         }
         BOUNCE.with(|b| {
             let mut b = b.borrow_mut();
-            b.0.copy_from_slice(&buf[..varaq::PAGE_SIZE]);
+            b.0.copy_from_slice(&buf[..crate::PAGE_SIZE]);
             let put = std::os::unix::fs::FileExt::write_at(&self.0, &b.0, at)?;
-            if put < varaq::PAGE_SIZE {
+            if put < crate::PAGE_SIZE {
                 return Err(std::io::ErrorKind::WriteZero.into());
             }
-            Ok(varaq::PAGE_SIZE)
+            Ok(crate::PAGE_SIZE)
         })
     }
     fn size(&self) -> std::io::Result<u64> {

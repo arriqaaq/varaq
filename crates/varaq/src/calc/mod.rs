@@ -1,4 +1,3 @@
-#![no_std]
 #[must_use]
 #[inline]
 pub fn chunk_end(next: usize, entries: usize, chunk: usize) -> usize {

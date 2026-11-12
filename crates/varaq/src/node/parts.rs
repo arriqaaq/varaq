@@ -108,7 +108,7 @@ impl Node {
     }
     fn lower_bound_parts(&self, head: &[u8], tail: &[u8]) -> (usize, bool) {
         let want = head_of_parts(head, tail);
-        let found = calc::lower_bound_by(self.len(), |mid| {
+        let found = crate::calc::lower_bound_by(self.len(), |mid| {
             Ok::<_, core::convert::Infallible>(match self.slot(mid).head.cmp(&want) {
                 core::cmp::Ordering::Equal => cmp_parts(self.key_at(mid), head, tail),
                 other => other,

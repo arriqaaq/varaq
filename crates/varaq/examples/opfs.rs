@@ -1,8 +1,8 @@
 #[cfg(all(feature = "opfs", target_arch = "wasm32"))]
 mod store {
-    use io::devices::Refusal;
-    use io::opfs;
     use varaq::WorkerId;
+    use varaq::io::devices::Refusal;
+    use varaq::io::opfs;
     const POOL_PAGES: usize = 4_096;
     const RING_BYTES: usize = 4 << 20;
     pub(crate) async fn run() -> Result<(), Refusal> {

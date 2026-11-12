@@ -119,7 +119,7 @@ impl<'g, 'a, const W: usize> NodeRef<'g, 'a, W> {
         let lower_below = lo_len != 0 && self.cmp_bytes(lo_at, lo_len, key)? == Ordering::Less;
         let (hi_at, hi_len) = self.fence(offsets::UPPER_FENCE)?;
         let at_or_below = hi_len != 0 && self.cmp_bytes(hi_at, hi_len, key)? != Ordering::Less;
-        Ok(calc::covers_by(lo_len == 0, lower_below, hi_len == 0, at_or_below))
+        Ok(crate::calc::covers_by(lo_len == 0, lower_below, hi_len == 0, at_or_below))
     }
     pub fn covers_from_start(&self, key: &[u8]) -> Optimistic<(bool, bool)> {
         let (lo_at, lo_len) = self.fence(offsets::LOWER_FENCE)?;
@@ -140,7 +140,7 @@ impl<'g, 'a, const W: usize> NodeRef<'g, 'a, W> {
         };
         let (hi_at, hi_len) = self.fence(offsets::UPPER_FENCE)?;
         let at_or_below = hi_len != 0 && self.cmp_bytes(hi_at, hi_len, key)? != Ordering::Less;
-        if calc::covers_by(lo_len == 0, lower_below, hi_len == 0, at_or_below) {
+        if crate::calc::covers_by(lo_len == 0, lower_below, hi_len == 0, at_or_below) {
             Ok((true, from_start))
         } else {
             Ok((false, false))
@@ -178,7 +178,7 @@ impl<'g, 'a, const W: usize> NodeRef<'g, 'a, W> {
         let suffix = &key[p..];
         let head = crate::node::head_of(suffix);
         let wide = wide_of(suffix);
-        calc::lower_bound_by(n, |mid| {
+        crate::calc::lower_bound_by(n, |mid| {
             let (at, key_len, _, slot_head, _) = self.slot(mid)?;
             Ok(match slot_head.cmp(&head) {
                 Ordering::Equal => self.cmp_key(at, key_len, suffix, wide)?,

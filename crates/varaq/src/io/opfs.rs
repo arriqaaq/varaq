@@ -1,5 +1,5 @@
-use crate::PositionalFile;
-use crate::devices::{Devices, Refusal};
+use crate::io::PositionalFile;
+use crate::io::devices::{Devices, Refusal};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -132,7 +132,7 @@ async fn resolved<T: JsCast>(promise: js_sys::Promise) -> Result<T, JsValue> {
 fn acquire_refusal(e: &JsValue) -> Refusal {
     match thrown(e).as_str() {
         "NoModificationAllowedError" | "InvalidStateError" => Refusal::StoreBusy,
-        _ => Refusal::Engine(varaq::Error::Device { page: None, op: varaq::DeviceOp::Read }),
+        _ => Refusal::Engine(crate::Error::Device { page: None, op: crate::DeviceOp::Read }),
     }
 }
 pub async fn root() -> Result<FileSystemDirectoryHandle, Refusal> {
@@ -165,6 +165,6 @@ pub async fn acquire(
         held.push(OpfsFile::adopt(opened.await.map_err(|e| acquire_refusal(&e))?));
     }
     let [catalog, log, data, versions]: [OpfsFile; 4] =
-        held.try_into().map_err(|_| Refusal::Engine(varaq::Error::Corrupt))?;
+        held.try_into().map_err(|_| Refusal::Engine(crate::Error::Corrupt))?;
     Ok(Devices::new(catalog, log, data, versions))
 }

@@ -346,7 +346,7 @@ impl Tree {
             batch.first = at;
             n
         } else if at < n {
-            calc::chunk_end(at, n, FIRST_CHUNK)
+            crate::calc::chunk_end(at, n, FIRST_CHUNK)
         } else {
             n
         };
@@ -415,7 +415,7 @@ impl Tree {
             batch.first = at;
             n
         } else if at < n {
-            calc::chunk_end(at, n, FIRST_CHUNK)
+            crate::calc::chunk_end(at, n, FIRST_CHUNK)
         } else {
             n
         };
@@ -463,7 +463,7 @@ impl Tree {
             next.clear();
             next.extend_from_slice(batch.get(batch.len() - 1).0);
             next.push(0);
-            chunk = calc::next_chunk(chunk);
+            chunk = crate::calc::next_chunk(chunk);
             copied += 1;
             match self.copy_chunk(guard, chunk, with_payload, batch) {
                 Ok(()) => {}
@@ -493,7 +493,7 @@ impl Tree {
     ) -> Descent<()> {
         batch.clear();
         let leaf = NodeRef::new(guard);
-        let end = calc::chunk_end(batch.next, batch.entries, chunk);
+        let end = crate::calc::chunk_end(batch.next, batch.entries, chunk);
         let mut stopped = end;
         let from = batch.next;
         leaf.slots_into(from, end, &mut batch.slots)?;

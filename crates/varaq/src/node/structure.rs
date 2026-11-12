@@ -46,7 +46,7 @@ impl Node {
                 "a balanced split of {n} of {} entries",
                 self.len()
             );
-            calc::balanced_split_point(&sizes[..n])
+            crate::calc::balanced_split_point(&sizes[..n])
         };
         let skewed = match key.map(|k| self.lower_bound(k)) {
             Some((i, false)) if i >= self.len() => Some(last),

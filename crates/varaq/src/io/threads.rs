@@ -1,9 +1,9 @@
+use crate::store::channel::{Completion, IoChannel, PageBuf, RequestId};
+use crate::{DeviceOp, Error, PageId, PageStore};
 use core::sync::atomic::Ordering;
 use core::sync::atomic::{AtomicU64, AtomicUsize};
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
-use varaq::store::channel::{Completion, IoChannel, PageBuf, RequestId};
-use varaq::{DeviceOp, Error, PageId, PageStore};
 enum Request {
     Call { id: RequestId, page: PageId, op: DeviceOp, buf: PageBuf },
     Stop,

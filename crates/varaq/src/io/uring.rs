@@ -1,11 +1,11 @@
 #![allow(unsafe_code)]
+use crate::store::channel::{Completion, IoChannel, PageBuf, RequestId};
+use crate::{DeviceOp, Error, PAGE_SIZE, PageId};
 use io_uring::{IoUring, opcode, types};
 use std::fs::File;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 use std::sync::Mutex;
-use varaq::store::channel::{Completion, IoChannel, PageBuf, RequestId};
-use varaq::{DeviceOp, Error, PAGE_SIZE, PageId};
 #[derive(Debug)]
 struct Slot {
     id: RequestId,
@@ -15,7 +15,7 @@ struct Slot {
 }
 struct Slab {
     slots: Vec<Option<Slot>>,
-    pages: Vec<Box<crate::AlignedPage>>,
+    pages: Vec<Box<crate::io::AlignedPage>>,
 }
 pub struct UringChannel {
     file: File,
@@ -48,7 +48,7 @@ impl UringChannel {
         Self::over(file, depth, false)
     }
     pub fn open_direct(path: &Path, depth: usize) -> Result<Option<Self>, Error> {
-        let Some(file) = crate::platform::open_direct(path)
+        let Some(file) = crate::io::platform::open_direct(path)
             .map_err(|_| Error::Device { page: None, op: DeviceOp::Read })?
         else {
             return Ok(None);
@@ -63,7 +63,7 @@ impl UringChannel {
         let mut slots = Vec::new();
         slots.resize_with(depth, || None);
         let pages = if direct {
-            (0..depth).map(|_| Box::new(crate::AlignedPage([0; PAGE_SIZE]))).collect()
+            (0..depth).map(|_| Box::new(crate::io::AlignedPage([0; PAGE_SIZE]))).collect()
         } else {
             Vec::new()
         };

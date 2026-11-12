@@ -1,8 +1,8 @@
-use io::devices::Refusal;
-use io::opfs;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use varaq::WorkerId;
+use varaq::io::devices::Refusal;
+use varaq::io::opfs;
 use varaq::tree::scan::Step;
 use varaq::txn::db::{Db, Transaction};
 use varaq::wal::worker::bind;

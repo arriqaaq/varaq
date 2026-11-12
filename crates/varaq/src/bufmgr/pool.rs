@@ -81,7 +81,7 @@ impl Pool {
     pub(crate) fn note_move(&self, from: u32, into: u32) {
         if !self
             .slot(into)
-            .is_some_and(|slot| calc::move_counted(slot.frame.gsn(), slot.frame.on_disk()))
+            .is_some_and(|slot| crate::calc::move_counted(slot.frame.gsn(), slot.frame.on_disk()))
         {
             return;
         }

@@ -15,10 +15,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72f5acc6cb2ba439de613abc23857ec3d78374d8ed5ac84e9d11336e87da8649"
 
 [[package]]
-name = "calc"
-version = "0.0.1"
-
-[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -31,14 +27,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a47af21622d091a8f0fb295b88bc886ac74efcc613efc19f5d0b21de5c89e47"
 dependencies = [
  "rustc_version",
-]
-
-[[package]]
-name = "exec"
-version = "0.0.1"
-dependencies = [
- "libc",
- "varaq",
 ]
 
 [[package]]
@@ -63,21 +51,6 @@ dependencies = [
  "futures-task",
  "pin-project-lite",
  "slab",
-]
-
-[[package]]
-name = "io"
-version = "0.0.1"
-dependencies = [
- "calc",
- "io-uring",
- "js-sys",
- "libc",
- "thiserror",
- "varaq",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
 ]
 
 [[package]]
@@ -212,11 +185,16 @@ checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
 
 [[package]]
 name = "varaq"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
- "calc",
  "crc32c",
+ "io-uring",
+ "js-sys",
+ "libc",
  "thiserror",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]
@@ -277,9 +255,8 @@ dependencies = [
 
 [[package]]
 name = "web"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
- "io",
  "js-sys",
  "varaq",
  "wasm-bindgen",

@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 pub mod bufmgr {
     pub mod cooling;
     pub mod fault;
@@ -215,3 +216,6 @@ impl core::fmt::Display for Unwind {
     }
 }
 pub type Optimistic<T> = Result<T, Unwind>;
+pub mod calc;
+pub mod exec;
+pub mod io;

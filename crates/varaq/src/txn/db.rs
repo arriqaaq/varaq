@@ -37,7 +37,7 @@ const CHECKPOINT_ROOT_ATTEMPTS: u32 = 64;
 const REFUSAL_CHECKPOINTS: usize = 2;
 const INCREMENTS: usize = 10;
 fn collect_bound_at(oldest: Option<Timestamp>, floor: Timestamp) -> Result<Timestamp, Error> {
-    Timestamp::new(calc::collect_bound(oldest.map(Timestamp::get), floor.get()))
+    Timestamp::new(crate::calc::collect_bound(oldest.map(Timestamp::get), floor.get()))
         .ok_or(Error::Corrupt)
 }
 fn paced_rings(workers: usize) -> Box<[crate::sync::Padded<PacedRing>]> {
@@ -706,7 +706,8 @@ impl Db {
         let (of, next) = match covering {
             Covering::Pool => (0..partitions, serial.next),
             Covering::Next => {
-                let (start, end, next) = calc::increment_range(serial.next, partitions, INCREMENTS);
+                let (start, end, next) =
+                    crate::calc::increment_range(serial.next, partitions, INCREMENTS);
                 (start..end, next)
             }
         };

@@ -378,7 +378,7 @@ impl Node {
     }
     #[must_use]
     pub fn covers(&self, key: &[u8]) -> bool {
-        calc::covers_by(
+        crate::calc::covers_by(
             self.lower_fence().is_empty(),
             key > self.lower_fence(),
             self.upper_fence().is_empty(),
@@ -554,7 +554,7 @@ impl Node {
         );
         let suffix = &key[p..];
         let head = head_of(suffix);
-        let found = calc::lower_bound_by(self.len(), |mid| {
+        let found = crate::calc::lower_bound_by(self.len(), |mid| {
             Ok::<_, core::convert::Infallible>(match self.slot(mid).head.cmp(&head) {
                 core::cmp::Ordering::Equal => self.key_at(mid).cmp(suffix),
                 other => other,

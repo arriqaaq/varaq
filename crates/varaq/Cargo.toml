@@ -1,20 +1,48 @@
 [package]
 name = "varaq"
-description = "The storage kernel: node layout, optimistic latches, the B+tree, the buffer manager."
+description = "An embedded transactional key-value store: a B+tree with optimistic latches, a buffer manager that spills to disk, a write-ahead log, and backends for files, memory, io_uring and the browser's OPFS."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
+readme = "README.md"
+keywords = ["database", "key-value", "btree", "embedded", "storage"]
+categories = ["database-implementations", "data-structures", "wasm"]
 
 [dependencies]
 thiserror.workspace = true
-calc.workspace = true
 crc32c = "0.6"
+
+libc.workspace = true
 
 [features]
 stats = []
+uring = ["dep:io-uring"]
+opfs = ["dep:wasm-bindgen", "dep:wasm-bindgen-futures", "dep:js-sys", "dep:web-sys"]
 
 [lints]
 workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+io-uring = { version = "0.6", optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = { version = "=0.2.129", optional = true }
+wasm-bindgen-futures = { version = "=0.4.79", optional = true }
+js-sys = { version = "=0.3.106", optional = true }
+web-sys = { version = "=0.3.106", optional = true, features = [
+  "DomException",
+  "FileSystemDirectoryHandle",
+  "FileSystemFileHandle",
+  "FileSystemGetDirectoryOptions",
+  "FileSystemGetFileOptions",
+  "FileSystemReadWriteOptions",
+  "FileSystemSyncAccessHandle",
+  "StorageManager",
+] }
+
+[[example]]
+name = "opfs"
+required-features = ["opfs"]

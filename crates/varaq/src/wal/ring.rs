@@ -110,12 +110,12 @@ impl Ring {
     #[must_use]
     pub fn free(&self) -> usize {
         let keep = self.retain.map_or(self.flushed, |r| r.min(self.flushed));
-        let free = calc::room(self.written, keep, self.log, self.unit);
+        let free = crate::calc::room(self.written, keep, self.log, self.unit);
         usize::try_from(free).unwrap_or(usize::MAX)
     }
     #[must_use]
     pub fn buffer_free(&self) -> usize {
-        let free = calc::room(self.written, self.flushed, self.buf.len() as u64, self.unit);
+        let free = crate::calc::room(self.written, self.flushed, self.buf.len() as u64, self.unit);
         usize::try_from(free).unwrap_or(usize::MAX)
     }
     fn zero(&mut self, at: u64, n: usize) {
@@ -137,7 +137,7 @@ impl Ring {
         let capacity = self.capacity();
         let to_usize = |n: u64| usize::try_from(n).unwrap_or(usize::MAX);
         let keep = self.retain.map_or(self.flushed, |r| r.min(self.flushed));
-        let placed = calc::place(
+        let placed = crate::calc::place(
             self.written,
             keep,
             self.flushed,
@@ -147,15 +147,15 @@ impl Ring {
             len as u64,
         );
         let start = match placed {
-            calc::Placement::Fits { at, .. } => at,
-            calc::Placement::DeviceFull { needed, free } => {
+            crate::calc::Placement::Fits { at, .. } => at,
+            crate::calc::Placement::DeviceFull { needed, free } => {
                 return Err(Error::LogFull {
                     capacity,
                     needed: to_usize(needed),
                     free: to_usize(free),
                 });
             }
-            calc::Placement::MemoryFull { needed, free } => {
+            crate::calc::Placement::MemoryFull { needed, free } => {
                 return Err(Error::LogFull {
                     capacity: self.buffer(),
                     needed: to_usize(needed),

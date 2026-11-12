@@ -13,16 +13,16 @@ use positional::{read_whole, write_whole};
 pub mod threads;
 #[cfg(all(target_os = "linux", feature = "uring"))]
 pub mod uring;
+use crate::page::checksum;
+use crate::{DeviceOp, Error, PAGE_SIZE, PageId, PageStore};
 #[cfg(unix)]
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
-use varaq::page::checksum;
-use varaq::{DeviceOp, Error, PAGE_SIZE, PageId, PageStore};
 #[derive(Debug)]
 pub struct FileStore<F = std::fs::File> {
     file: F,
     allocated: AtomicU64,
-    grown: varaq::sync::Mutex<u64>,
+    grown: crate::sync::Mutex<u64>,
     reserved: AtomicU64,
 }
 pub const GROWTH_PAGES: u64 = 64;
@@ -81,7 +81,7 @@ impl<F: PositionalFile> FileStore<F> {
         Ok(Self {
             file,
             allocated: AtomicU64::new(len / PAGE_SIZE as u64),
-            grown: varaq::sync::Mutex::new(len),
+            grown: crate::sync::Mutex::new(len),
             reserved: AtomicU64::new(len),
         })
     }
@@ -121,8 +121,8 @@ impl<F: PositionalFile> FileStore<F> {
     fn grow(&self, grown: &mut u64, end: u64, pages: u64, page: PageId) -> Result<(), Error> {
         let full = || Error::StoreFull { limit: usize::try_from(page.get()).unwrap_or(usize::MAX) };
         let run = GROWTH_PAGES * PAGE_SIZE as u64;
-        let (least, to) =
-            calc::growth_target(*grown, end, run, GROWTH_FRACTION, pages == 1).ok_or_else(full)?;
+        let (least, to) = crate::calc::growth_target(*grown, end, run, GROWTH_FRACTION, pages == 1)
+            .ok_or_else(full)?;
         let room = |e: &std::io::Error| {
             matches!(e.kind(), std::io::ErrorKind::StorageFull | std::io::ErrorKind::QuotaExceeded)
         };
