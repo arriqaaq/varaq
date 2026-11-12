@@ -2,7 +2,7 @@
 mod store {
     use io::devices::Refusal;
     use io::opfs;
-    use waraq::WorkerId;
+    use varaq::WorkerId;
     const POOL_PAGES: usize = 4_096;
     const RING_BYTES: usize = 4 << 20;
     pub(crate) async fn run() -> Result<(), Refusal> {
@@ -15,7 +15,7 @@ mod store {
             }
             Err(refused) => return Err(refused),
         };
-        let _bound = waraq::wal::worker::bind(0);
+        let _bound = varaq::wal::worker::bind(0);
         db.insert(WorkerId(0), b"hello", b"opfs")?;
         Ok(())
     }

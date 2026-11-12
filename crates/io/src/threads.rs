@@ -2,8 +2,8 @@ use core::sync::atomic::Ordering;
 use core::sync::atomic::{AtomicU64, AtomicUsize};
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
-use waraq::store::channel::{Completion, IoChannel, PageBuf, RequestId};
-use waraq::{DeviceOp, Error, PageId, PageStore};
+use varaq::store::channel::{Completion, IoChannel, PageBuf, RequestId};
+use varaq::{DeviceOp, Error, PageId, PageStore};
 enum Request {
     Call { id: RequestId, page: PageId, op: DeviceOp, buf: PageBuf },
     Stop,

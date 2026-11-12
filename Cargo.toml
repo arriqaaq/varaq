@@ -1,18 +1,18 @@
 [workspace]
 resolver = "3"
-members = ["crates/waraq", "crates/io", "crates/exec", "crates/web", "crates/calc"]
-default-members = ["crates/waraq", "crates/io"]
+members = ["crates/varaq", "crates/io", "crates/exec", "crates/web", "crates/calc"]
+default-members = ["crates/varaq", "crates/io"]
 
 [workspace.package]
 version = "0.0.1"
 edition = "2024"
 rust-version = "1.95"
 license = "Apache-2.0"
-repository = "https://github.com/arriqaaq/waraq"
+repository = "https://github.com/arriqaaq/varaq"
 authors = ["arriqaaq"]
 
 [workspace.dependencies]
-waraq = { path = "crates/waraq", version = "=0.0.1" }
+varaq = { path = "crates/varaq", version = "=0.0.1" }
 io = { path = "crates/io", version = "=0.0.1" }
 calc = { path = "crates/calc", version = "=0.0.1" }
 thiserror = { version = "2", default-features = false }

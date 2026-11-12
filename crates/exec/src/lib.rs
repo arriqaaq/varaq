@@ -1,7 +1,7 @@
 use std::sync::PoisonError;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Condvar, Mutex, MutexGuard};
-use waraq::{Scheduler, Ticket};
+use varaq::{Scheduler, Ticket};
 const SLOTS: usize = 64;
 const SLOT_BITS: u32 = 16;
 const SLOT_MASK: u64 = (1 << SLOT_BITS) - 1;

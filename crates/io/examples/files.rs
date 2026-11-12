@@ -1,7 +1,7 @@
 use io::devices::{Devices, Refusal};
 use std::fs::{File, OpenOptions};
 use std::path::Path;
-use waraq::WorkerId;
+use varaq::WorkerId;
 const POOL_PAGES: usize = 1_024;
 const RING_BYTES: usize = 4 << 20;
 fn devices(dir: &Path) -> std::io::Result<Devices<File>> {
@@ -12,9 +12,9 @@ fn devices(dir: &Path) -> std::io::Result<Devices<File>> {
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_nanos();
-    let dir = std::env::temp_dir().join(format!("waraq-example-{}-{nanos}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("varaq-example-{}-{nanos}", std::process::id()));
     std::fs::create_dir_all(&dir)?;
-    let _bound = waraq::wal::worker::bind(0);
+    let _bound = varaq::wal::worker::bind(0);
     {
         let db = devices(&dir)?.create(1, POOL_PAGES, RING_BYTES)?;
         db.insert(WorkerId(0), b"hello", b"files")?;

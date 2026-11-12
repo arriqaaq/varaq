@@ -1,7 +1,7 @@
 use crate::{FileStore, PositionalFile, store_failed};
 use std::sync::Arc;
-use waraq::txn::db::{Db, Stores};
-use waraq::{DeviceOp, Error, PageStore};
+use varaq::txn::db::{Db, Stores};
+use varaq::{DeviceOp, Error, PageStore};
 pub type DeviceStore<F> = FileStore<Arc<F>>;
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum Refusal {
@@ -83,12 +83,12 @@ impl<F: PositionalFile + 'static> Devices<F> {
         if !self.all_empty()? {
             return Err(Refusal::StoreExists);
         }
-        let floor = waraq::wal::worker::ring_floor();
+        let floor = varaq::wal::worker::ring_floor();
         if (ring_bytes as u64) < floor {
             return Err(Refusal::RingBelowFloor { ring: ring_bytes, floor });
         }
         let (catalog, others, files) = self.into_parts()?;
-        let built = waraq::catalog::prepare(&catalog).and_then(|()| {
+        let built = varaq::catalog::prepare(&catalog).and_then(|()| {
             Db::with_log_capacity(workers, pool_pages, ring_bytes, others.stores(catalog, wrap))
         });
         match built {
@@ -114,12 +114,12 @@ impl<F: PositionalFile + 'static> Devices<F> {
             return Err(Refusal::NoSuchStore);
         }
         let (catalog, others, _) = self.into_parts()?;
-        if (catalog.len() as u64) < waraq::catalog::SECOND_SLOT
-            || waraq::catalog::is_blank(&catalog)?
+        if (catalog.len() as u64) < varaq::catalog::SECOND_SLOT
+            || varaq::catalog::is_blank(&catalog)?
         {
             return Err(Refusal::IncompleteCreate);
         }
-        let workers = waraq::catalog::load(&catalog)?.workers.len();
+        let workers = varaq::catalog::load(&catalog)?.workers.len();
         Ok(Db::open(workers, pool_pages, others.stores(catalog, wrap))?)
     }
     pub fn destroy(self) -> Result<(), Refusal> {

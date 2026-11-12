@@ -1,4 +1,4 @@
-export class Waraq {
+export class Varaq {
   #worker;
   #next = 1;
   #pending = new Map();
@@ -40,11 +40,11 @@ export class Waraq {
   }
 
   static #start({ worker, workerUrl }) {
-    return new Waraq(worker ?? new Worker(workerUrl, { type: 'module' }));
+    return new Varaq(worker ?? new Worker(workerUrl, { type: 'module' }));
   }
 
   static async create(name, { workerUrl, worker, workers = 2, poolPages = 4096, ringBytes = 4 << 20 }) {
-    const db = Waraq.#start({ worker, workerUrl });
+    const db = Varaq.#start({ worker, workerUrl });
     try {
       await db.#call('create', name, workers, poolPages, ringBytes);
     } catch (error) {
@@ -56,7 +56,7 @@ export class Waraq {
   }
 
   static async open(name, { workerUrl, worker, poolPages = 4096 }) {
-    const db = Waraq.#start({ worker, workerUrl });
+    const db = Varaq.#start({ worker, workerUrl });
     try {
       await db.#call('open', name, poolPages);
     } catch (error) {
@@ -68,7 +68,7 @@ export class Waraq {
   }
 
   static async destroy(name, { workerUrl, worker }) {
-    const db = Waraq.#start({ worker, workerUrl });
+    const db = Varaq.#start({ worker, workerUrl });
     try {
       await db.#call('destroy', name);
     } finally {

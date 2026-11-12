@@ -579,7 +579,7 @@ impl Db {
         let refused = false;
         let spawned = !refused
             && std::thread::Builder::new()
-                .name("waraq-checkpointer".into())
+                .name("varaq-checkpointer".into())
                 .spawn(move || checkpointer(&db, &pacing))
                 .is_ok();
         if spawned {

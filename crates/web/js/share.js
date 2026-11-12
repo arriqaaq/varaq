@@ -247,7 +247,7 @@ export function startWorker({ init, Store, hooks = {} }) {
   async function join(op, args) {
 
     role = 'joining';
-    prefix = `waraq:${args[0]}`;
+    prefix = `varaq:${args[0]}`;
     await hold(`${prefix}:tab:${tab}`);
     channels = {
       tabs: new BroadcastChannel(`${prefix}:tabs`),
@@ -264,7 +264,7 @@ export function startWorker({ init, Store, hooks = {} }) {
   }
 
   function destroy(name) {
-    return navigator.locks.request(`waraq:${name}`, { ifAvailable: true }, async (lock) => {
+    return navigator.locks.request(`varaq:${name}`, { ifAvailable: true }, async (lock) => {
       if (lock === null) throw named('StoreBusy', 'a tab holds this store');
       await whenFree(() => Store.destroy(name));
     });

@@ -1,6 +1,6 @@
-use waraq::tree::Tree;
-use waraq::tree::scan::Step;
-fn main() -> Result<(), waraq::Error> {
+use varaq::tree::Tree;
+use varaq::tree::scan::Step;
+fn main() -> Result<(), varaq::Error> {
     let tree = Tree::with_capacity(1_024)?;
     for i in 0u32..10_000 {
         tree.insert(&i.to_be_bytes(), &(i * 2).to_le_bytes())?;

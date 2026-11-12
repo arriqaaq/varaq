@@ -1,10 +1,10 @@
-use waraq::WorkerId;
-use waraq::tree::scan::Step;
-use waraq::txn::db::Db;
-fn main() -> Result<(), waraq::Error> {
+use varaq::WorkerId;
+use varaq::tree::scan::Step;
+use varaq::txn::db::Db;
+fn main() -> Result<(), varaq::Error> {
     let db = Db::with_capacity(2, 1_024)?;
     let me = WorkerId(0);
-    let _bound = waraq::wal::worker::bind(0);
+    let _bound = varaq::wal::worker::bind(0);
     db.insert(me, b"apple", b"1")?;
     db.insert(me, b"pear", b"2")?;
     let mut tx = db.begin(me)?;

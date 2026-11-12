@@ -4,8 +4,8 @@ use std::fs::File;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 use std::sync::Mutex;
-use waraq::store::channel::{Completion, IoChannel, PageBuf, RequestId};
-use waraq::{DeviceOp, Error, PAGE_SIZE, PageId};
+use varaq::store::channel::{Completion, IoChannel, PageBuf, RequestId};
+use varaq::{DeviceOp, Error, PAGE_SIZE, PageId};
 #[derive(Debug)]
 struct Slot {
     id: RequestId,

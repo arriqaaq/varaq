@@ -38,7 +38,7 @@ name = "exec"
 version = "0.0.1"
 dependencies = [
  "libc",
- "waraq",
+ "varaq",
 ]
 
 [[package]]
@@ -74,7 +74,7 @@ dependencies = [
  "js-sys",
  "libc",
  "thiserror",
- "waraq",
+ "varaq",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -211,7 +211,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
 
 [[package]]
-name = "waraq"
+name = "varaq"
 version = "0.0.1"
 dependencies = [
  "calc",
@@ -281,7 +281,7 @@ version = "0.0.1"
 dependencies = [
  "io",
  "js-sys",
- "waraq",
+ "varaq",
  "wasm-bindgen",
  "wasm-bindgen-futures",
 ]

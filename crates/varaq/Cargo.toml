@@ -1,5 +1,5 @@
 [package]
-name = "waraq"
+name = "varaq"
 description = "The storage kernel: node layout, optimistic latches, the B+tree, the buffer manager."
 version.workspace = true
 edition.workspace = true

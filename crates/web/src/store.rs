@@ -2,17 +2,17 @@ use io::devices::Refusal;
 use io::opfs;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
-use waraq::WorkerId;
-use waraq::tree::scan::Step;
-use waraq::txn::db::{Db, Transaction};
-use waraq::wal::worker::bind;
+use varaq::WorkerId;
+use varaq::tree::scan::Step;
+use varaq::txn::db::{Db, Transaction};
+use varaq::wal::worker::bind;
 use wasm_bindgen::prelude::*;
 fn refused(name: &str, message: &str) -> JsValue {
     let error = js_sys::Error::new(message);
     error.set_name(name);
     error.into()
 }
-fn engine(e: &waraq::Error) -> JsValue {
+fn engine(e: &varaq::Error) -> JsValue {
     refused(e.class().name(), &e.to_string())
 }
 fn device_set(r: &Refusal) -> JsValue {
@@ -59,7 +59,7 @@ impl Store {
     fn with_open<R>(
         &self,
         id: f64,
-        f: impl FnOnce(&mut Transaction<'static>) -> Result<R, waraq::Error>,
+        f: impl FnOnce(&mut Transaction<'static>) -> Result<R, varaq::Error>,
     ) -> Result<R, JsValue> {
         let mut open = self.open.borrow_mut();
         let entry = open.get_mut(&key(id)?).ok_or_else(|| unknown(id))?;
@@ -73,7 +73,7 @@ impl Store {
     }
     fn autocommit<R>(
         &self,
-        f: impl FnOnce(&mut Transaction<'static>) -> Result<R, waraq::Error>,
+        f: impl FnOnce(&mut Transaction<'static>) -> Result<R, varaq::Error>,
     ) -> Result<R, JsValue> {
         let worker = self.free_worker()?;
         let _bound = bind(worker_id(worker)?);
@@ -90,8 +90,8 @@ fn worker_id(worker: usize) -> Result<u16, JsValue> {
     u16::try_from(worker).map_err(|_| refused("Config", "more workers than a log binding names"))
 }
 fn rows(
-    scan: impl FnOnce(&mut dyn FnMut(&[u8], &[u8]) -> Step) -> Result<(), waraq::Error>,
-) -> Result<js_sys::Array, waraq::Error> {
+    scan: impl FnOnce(&mut dyn FnMut(&[u8], &[u8]) -> Step) -> Result<(), varaq::Error>,
+) -> Result<js_sys::Array, varaq::Error> {
     let out = js_sys::Array::new();
     scan(&mut |k, v| {
         let pair = js_sys::Array::of2(&js_sys::Uint8Array::from(k), &js_sys::Uint8Array::from(v));

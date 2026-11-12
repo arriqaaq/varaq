@@ -16,13 +16,13 @@ pub mod uring;
 #[cfg(unix)]
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
-use waraq::page::checksum;
-use waraq::{DeviceOp, Error, PAGE_SIZE, PageId, PageStore};
+use varaq::page::checksum;
+use varaq::{DeviceOp, Error, PAGE_SIZE, PageId, PageStore};
 #[derive(Debug)]
 pub struct FileStore<F = std::fs::File> {
     file: F,
     allocated: AtomicU64,
-    grown: waraq::sync::Mutex<u64>,
+    grown: varaq::sync::Mutex<u64>,
     reserved: AtomicU64,
 }
 pub const GROWTH_PAGES: u64 = 64;
@@ -81,7 +81,7 @@ impl<F: PositionalFile> FileStore<F> {
         Ok(Self {
             file,
             allocated: AtomicU64::new(len / PAGE_SIZE as u64),
-            grown: waraq::sync::Mutex::new(len),
+            grown: varaq::sync::Mutex::new(len),
             reserved: AtomicU64::new(len),
         })
     }
