@@ -100,7 +100,7 @@ export function initThreads({ gsap, ScrollTrigger, scrollToY }) {
   const LO = lineO.getTotalLength(), LS = lineS.getTotalLength();
   function drawChart(k = 1) {
     lineO.style.strokeDasharray = `${LO * k} ${LO}`;
-    gsap.to(dot, { attr: { cx: cx(st.n), cy: cy(rateOf(st.n, st.shared)) }, duration: .5, ease: 'power3.out' });
+    gsap.to(dot, { attr: { cx: cx(st.n), cy: cy(rateOf(st.n, st.shared)) }, duration: .5, ease: 'power3.out', overwrite: 'auto' });
     $('#thN').textContent = st.n; $('#thMode').textContent = st.shared ? 'one shared lock' : 'optimistic';
   }
 
@@ -108,7 +108,7 @@ export function initThreads({ gsap, ScrollTrigger, scrollToY }) {
   const range = $('#thCores'), out = $('#thCoresO');
   range.addEventListener('input', () => { st.n = +range.value; out.textContent = st.n; layout(); });
   const setShared = v => {
-    st.shared = v; gsap.to(lock, { opacity: v ? 1 : 0, duration: .3 });
+    st.shared = v; gsap.to(lock, { opacity: v ? 1 : 0, duration: .3, overwrite: 'auto' });
     sec.querySelectorAll('#thLock button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === v));
     drawChart();
   };

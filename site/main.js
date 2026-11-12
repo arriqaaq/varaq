@@ -101,13 +101,11 @@ function choreograph(p, st) {
     const m = platter.D0 / st.cur.dist;
     $('#hMag').textContent = '×' + (m < 10 ? m.toFixed(1) : Math.round(m).toLocaleString('en-US'));
   }
-  // captions
+  // captions: opacity is a function of scroll alone, so no caption can outlive its window
   let ci = -1; STORY.forEach(([a, b], i) => { if (p >= a && p < b) ci = i; });
-  if (introDone && ci !== capI) {
-    capI = ci;
-    if (ci < 0) gsap.to(cap, { opacity: 0, duration: .25 });
-    else { cap.innerHTML = STORY[ci][2]; gsap.fromTo(cap, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: .4 }); }
-  }
+  if (ci !== capI) { capI = ci; if (ci >= 0) cap.innerHTML = STORY[ci][2]; }
+  const cv = ci >= 0 ? seg(p, STORY[ci][0], STORY[ci][0] + .008) * (1 - seg(p, STORY[ci][1] - .008, STORY[ci][1])) : 0;
+  cap.style.opacity = cv; cap.style.transform = `translateY(${(1 - cv) * 8}px)`;
   // the chapter headlines
   let hi = -1; HEADS.forEach(([a, b], i) => { if (p >= a && p < b) hi = i; });
   if (hi !== headI) { headI = hi; if (hi >= 0) { $('#dive .label').textContent = HEADS[hi][2]; $('#dive .h2').innerHTML = HEADS[hi][3]; } }
