@@ -259,7 +259,7 @@ vec3 ssdScene(vec3 ro, vec3 rd, float pxs, vec3 bg){
   float ndv = max(dot(n, Vv), 0.0);
   float fres = F0 + (1.0 - F0) * pow(1.0 - ndv, 5.0);
   vec3 R = reflect(-Vv, n);
-  vec3 spec = env(R) * fres * gloss + vec3(pow(max(dot(n, H), 0.0), 300.0) * 2.0) * fres * gloss;
+  vec3 spec = (env(R) * fres * gloss + vec3(pow(max(dot(n, H), 0.0), 300.0) * 2.0) * fres * gloss) * 0.35;
   float tdh = dot(BN, H); spec += aniso * vec3(0.9, 0.92, 1.0) * pow(sqrt(max(0.0, 1.0 - tdh * tdh)), 80.0) * 0.4;
   vec3 col = diff * (0.2 + max(dot(n, L), 0.0)) + spec + emit;
   col += vec3(0.08) * smoothstep(-0.006, 0.0, bd);
@@ -311,7 +311,7 @@ export const PH = {
   dive0: .08, dive1: .32,        // down onto one track
   lane1: .40,                    // in the lane, at disk speed
   warp0: .40, morph0: .44, morph1: .49,   // the disk stops; the lane rushes and becomes flash
-  rise0: .53, rise1: .68,        // out of the flash: the whole SSD
+  rise0: .53, rise1: .64,        // out of the flash: the whole SSD
   hot0: .72, hot1: .82,          // the pages you use, held in memory
   end: .84,
 };
@@ -330,7 +330,7 @@ function cameraAt(s, t, mx, my, W, H) {
     const side = ease(smooth(PH.end, PH.end + .04, s));
     tgt = v3.add(v3.mix(DIVE, TS, smooth(.05, .7, e)), v3.mul(BT, .5 * side));
     dist = Math.exp(Math.log(D1) + (Math.log(DS) - Math.log(D1)) * e) * (1 + .22 * side);
-    dir = v3.norm(v3.mix(DIR1, DIRS, Math.pow(e, .5)));
+    dir = v3.norm(v3.mix(DIR1, DIRS, smooth(0, .18, e)));
   }
   const o = Math.min(1, dist / 1.5);
   const ay = mx * .16 * o, ax = -my * .08 * o;
@@ -391,7 +391,7 @@ export function initPlatter(canvas, opts = {}) {
     state.warp = warp; state.crawl = crawl; state.rush = rush;
     const scene = smooth(P.morph0 + .01, P.morph1, s);
     const read = smooth(P.morph1, P.rise1, s);
-    const hot = smooth(P.hot0, P.hot0 + .04, s);
+    const hot = 0;
     state.scene = scene; state.read = read; state.hot = hot;
     const base = reduce ? 0 : .55 * state.spin * (1 - scene);
     if (!state.dragging) state.omega += (base - state.omega) * Math.min(1, dt * 2.2);

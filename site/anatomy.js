@@ -117,7 +117,7 @@ export function initAnatomy({ gsap, ScrollTrigger, scrollToY }) {
     layout();
     const setShared = v => { st.shared = v; gsap.to([latch, latchT], { opacity: v ? 1 : 0, duration: .3 }); };
     const steps = [
-      { cap: 'One worker per <b>core</b>, many tasks per worker. Nothing is shared between them.', run: tl => { tl.call(() => setShared(false)); } },
+      { cap: 'One worker per <b>core</b>, many tasks per worker, each with its own log and I/O ring.', run: tl => { tl.call(() => setShared(false)); } },
       { cap: 'A task that misses the pool submits one read and <b>steps aside</b>.', run: tl => { tl.call(() => { st.forceMiss = Math.min(1, st.n - 1); }); } },
       { cap: 'The core keeps running <b>other tasks</b> while that read is in flight.', run: tl => { tl.call(() => { st.forceMiss = 0; }); } },
       { cap: 'The page lands and the task <b>resumes</b>. Now try one shared lock, or more cores, above.', run: tl => { tl.call(() => {}); } },
@@ -228,14 +228,14 @@ export function initAnatomy({ gsap, ScrollTrigger, scrollToY }) {
       { cap: 'A child is named by <b>page id</b>, not by address. A table translates the id to a frame.', run: tl => {
         tl.call(() => rowEls[0].r.setAttribute('class', 'box hot'), null, .2);
       } },
-      { cap: 'The frame is <b>predicted from the id</b> and confirmed after. One look, usually no chain to follow.', run: tl => {
+      { cap: 'The frame is <b>predicted from the id</b>, then confirmed. A wrong guess falls back to the table, never to a wrong page.', run: tl => {
         tl.call(() => rowEls[0].r.setAttribute('class', 'box hot'));
         tl.set(arrow, { attr: { d: `M118,70 C ${target.x - 20},70 ${target.x - 10},${target.y + 14} ${target.x},${target.y + 14}` } });
         tl.to(arrow, { opacity: 1, duration: .4 }, .2);
         tl.call(() => { target.st = 'sel'; paint(); }, null, .6);
         tl.set(mark, { attr: { x: target.x + 10, y: target.y - 4 } }, .6).to(mark, { opacity: 1, duration: .3 }, .9);
       } },
-      { cap: 'Pages nobody touches <b>cool</b>. Touch a cooling page and it warms again, at no cost.', run: tl => {
+      { cap: 'Pages nobody touches <b>cool</b>. Touch a cooling page and it warms again, without a read.', run: tl => {
         const cool = [2, 7, 15, 20, 22];
         tl.call(() => { cool.forEach(k => frames[k].st = 'cool'); paint(); }, null, .3);
         tl.call(() => { frames[7].st = 'sel'; paint(); }, null, 1.6);
@@ -338,7 +338,7 @@ export function initAnatomy({ gsap, ScrollTrigger, scrollToY }) {
         tl.to(chip, { opacity: 1, duration: .4 }, .4);
         tl.call(() => { free.textContent = 'core 2 free'; }, null, .9);
       } },
-      { cap: 'It is acknowledged once its own log is durable, and <b>only the logs it read from</b>. Logs 1 and 3 never wait.', run: tl => {
+      { cap: 'It is acknowledged once its own log is durable and <b>any transaction it depends on</b> is too. Logs it never touched are never waited on.', run: tl => {
         tl.set(chip, { opacity: 1 });
         tl.set(dep, { attr: { d: `M60,${lanes[2].y} C40,${lanes[2].y} 40,${lanes[0].y} 60,${lanes[0].y}` } }).to(dep, { opacity: 1, duration: .4 }, .1);
         grow(tl, 0, 0, .5, lanes[0].w - lanes[0].d);
@@ -416,7 +416,7 @@ export function initAnatomy({ gsap, ScrollTrigger, scrollToY }) {
     steps: [
       { cap: 'A request lands on a <b>core</b>. Every core runs its own worker, with its own queue.', run: tl => { tl.call(() => { lit(['cores']); litLinks([]); }); engineSeg(tl, 0, .08, 1); } },
       { cap: 'The worker walks the <b>B+tree</b>, from the root to the leaf that holds the key.', run: tl => { tl.call(() => { lit(['tree']); litLinks(['ct']); }); engineSeg(tl, .08, .3, 1.2); } },
-      { cap: 'Each step turns a page id into a <b>frame in memory</b>, almost always without a miss.', run: tl => { tl.call(() => { lit(['pages']); litLinks(['tp']); }); engineSeg(tl, .3, .45, 1); } },
+      { cap: 'Each step turns a page id into a <b>frame in memory</b>.', run: tl => { tl.call(() => { lit(['pages']); litLinks(['tp']); }); engineSeg(tl, .3, .45, 1); } },
       { cap: 'Only a page that is not in memory reaches the <b>device</b>: one read, and the core works on.', run: tl => { tl.call(() => { lit(['device']); litLinks(['pd']); }); engineSeg(tl, .45, .62, 1); } },
       { cap: 'A write appends to <b>this core’s own log</b>. No other core stands in the way.', run: tl => { tl.call(() => { lit(['commit']); litLinks(['cd']); }); engineSeg(tl, .62, .78, 1); } },
       { cap: 'Readers see a <b>snapshot</b>; the old version stays as a delta until no one can see it.', run: tl => { tl.call(() => { lit(['snap']); litLinks(['sc', 'cs']); }); engineSeg(tl, .78, 1, 1.2); } },

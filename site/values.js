@@ -10,7 +10,7 @@ const STEPS = [
   { title: 'Past 506 bytes, it moves to a <b>value page</b>.',
     facts: [['The leaf keeps', 'an 8-byte reference and the first bytes'], ['A value page', 'packs several values'], ['A key-only scan', 'never touches it']] },
   { title: 'Bigger than a page: <b>one contiguous run</b>.',
-    facts: [['Any size', 'one run of pages, side by side'], ['A cold read', 'one device read for the whole run'], ['The bytes', 'never enter the log']] },
+    facts: [['No page-size ceiling', 'one run of pages, side by side'], ['A cold read', 'up to 256 pages, 1 MiB, per device read'], ['The bytes', 'never enter the log']] },
 ];
 
 export function initValues({ gsap, ScrollTrigger, scrollToY }) {
@@ -47,7 +47,7 @@ export function initValues({ gsap, ScrollTrigger, scrollToY }) {
   T(344, 214, 'one contiguous run of pages', 11, 'mono', 'start', run);
   const runPages = [0, 1, 2, 3, 4, 5].map(k => mk('rect', { x: 330 + k * 40, y: 226, width: 36, height: 52, rx: 3, class: 'box' }, run));
   const sweep = mk('rect', { x: 330, y: 288, width: 0, height: 3, rx: 1.5, fill: 'url(#vaGrad)' }, run);
-  T(570, 304, 'one read', 11, 'mono', 'end', run);
+  T(570, 304, 'one read per 1 MiB', 11, 'mono', 'end', run);
   const arrow2 = mk('path', { d: `M246,${hot.y + 13} C300,${hot.y + 13} 300,252 330,252`, class: 'ln hot', opacity: 0 }, svg);
   const log = mk('g', { opacity: 0 }, svg);
   mk('rect', { x: 330, y: 316, width: 240, height: 18, rx: 3, class: 'box dim' }, log);

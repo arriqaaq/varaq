@@ -47,12 +47,13 @@
     <div class="hud hud-l" id="hudL">
       <div><span class="label">Medium</span><span id="hMed">Magnetic disk</span></div>
       <div><span class="label">Spindle</span><span id="hRpm">7,200</span> RPM</div>
-      <div><span class="label">Per page</span><span id="hLat">8.3 ms</span></div>
+      <div><span class="label">Per read</span><span id="hLat">4.2 ms</span></div>
     </div>
     <div class="hud hud-r" id="hudR">
       <div><span class="label">Magnification</span><span id="hMag">×1.0</span></div>
       <div><span class="label">Track</span><span id="hTrk">172 · 4 KiB sectors</span></div>
-      <div class="hint">Drag the platter · scroll to dive</div>
+      <div class="hint" id="hHint">Drag the platter · scroll to dive</div>
+      <div class="hint h-src" id="hSrc">disk · half a turn at 7,200 rpm<br>nvme · fio, 4 KiB random read, median<br>ram · one lookup on one core</div>
     </div>
 
     <!-- 01 · the lane -->
@@ -61,12 +62,12 @@
       <h2 class="h2">Every read waits<br>for the platter.</h2>
     </div>
     <div class="meter" id="meter" aria-hidden="true">
-      <div class="m-read"><span class="m-v" id="mV">8.3 ms</span><span class="label">to reach one page</span></div>
+      <div class="m-read"><span class="m-v" id="mV">4.2 ms</span><span class="label">to read one 4 KiB page</span></div>
       <div class="m-bar">
         <i class="m-fill" id="mFill"></i><i class="m-needle" id="mNeedle"></i>
-        <span class="m-tick" style="left:3%"><b>Disk seek</b>8 ms</span>
-        <span class="m-tick" id="mSsd" style="left:47%"><b>NVMe read</b>~80 µs</span>
-        <span class="m-tick" style="left:95%"><b>Memory</b>~100 ns</span>
+        <span class="m-tick" style="left:3%"><b>Disk</b>≥ 4.2 ms</span>
+        <span class="m-tick" id="mSsd" style="left:47%"><b>NVMe</b>~25 µs</span>
+        <span class="m-tick" style="left:95%"><b>RAM lookup</b>&lt; 1 µs</span>
       </div>
       <p class="m-chip" id="mChip">Now on NVMe</p>
     </div>
@@ -75,11 +76,11 @@
     <div class="ladder" id="ladderBox">
       <p class="label lad-step"><span id="ladStep">01</span> / 05</p>
       <ol id="ladder">
-        <li>A key is found by walking a tree of <b>4 KiB pages</b>.</li>
-        <li>Pages in use are served at <b>memory speed</b>.</li>
-        <li>Pages that are not stream from <b>NVMe</b>, one read each.</li>
-        <li>Readers write nothing shared, so it <b>scales with cores</b>.</li>
-        <li>Every commit is <b>ACID</b>, and survives a crash.</li>
+        <li>A lookup whose pages are in RAM takes <b>under a microsecond</b>.</li>
+        <li>A page that is not costs <b>one 4 KiB read</b>: a page is sized to one NVMe read.</li>
+        <li>While that read is in flight, <b>the core runs other work</b>.</li>
+        <li>Readers take no locks, so <b>reads scale with cores</b>.</li>
+        <li>Commits are <b>ACID</b>, with snapshot isolation, and survive a crash.</li>
       </ol>
     </div>
   </div>
@@ -159,7 +160,7 @@
     <div class="pin-grid">
       <aside class="index">
         <p class="tag">03 · Values of any size</p>
-        <h2 class="h2">From bytes<br>to <span class="hl">gigabytes.</span></h2>
+        <h2 class="h2">From bytes<br>to <span class="hl">blobs.</span></h2>
         <ol class="idx" id="vaIdx"><li class="on" data-i="0"><span class="label">01</span>Small</li><li data-i="1"><span class="label">02</span>Larger</li><li data-i="2"><span class="label">03</span>Bigger than a page</li></ol>
         <p class="label pin-hint">Scroll to step through</p>
       </aside>
@@ -240,13 +241,13 @@
   <div class="pin-sticky"><div class="pin-center">
   <header class="sec-head split">
     <div><p class="tag">06 · Scales with cores</p><h2 class="h2">Add a core,<br><span class="hl">add its reads.</span></h2></div>
-    <p class="lede"><span>A reader never writes memory another core reads.</span> Lookups over a million keys in memory, from one core to fourteen.</p>
+    <p class="lede"><span>A reader never writes memory another core reads.</span> Lookups over a million keys in RAM, from one thread to fourteen on a 14-core machine.</p>
   </header>
   <div class="curve-wrap">
     <svg class="curve" id="curve" viewBox="0 0 1200 560" preserveAspectRatio="none" aria-hidden="true"></svg>
     <i class="tip-dot" id="tipDot"></i>
-    <div class="tip" id="tip"><span class="tip-v" id="tipV">×1.0</span><span class="label">lookups · <span id="tipM">1 core</span></span></div>
-    <div class="axis label"><span style="left:0">1 core</span><span style="left:23.1%">4</span><span style="left:53.8%">8</span><span style="left:100%;transform:translateX(-100%)">14 cores</span></div>
+    <div class="tip" id="tip"><span class="tip-v" id="tipV">×1.0</span><span class="label">lookups · <span id="tipM">1 thread</span></span></div>
+    <div class="axis label"><span style="left:0">1 thread</span><span style="left:23.1%">4</span><span style="left:53.8%">8</span><span style="left:100%;transform:translateX(-100%)">14 threads</span></div>
   </div>
 </div></div>
 </section>
@@ -261,8 +262,8 @@
     <h2 class="trust-h">Fifty years of B-tree research, carried from <span class="tv" data-v="0">spinning disks</span> to <span class="tv" data-v="1">memory</span> and <span class="tv" data-v="2">NVMe</span>.</h2>
     <p class="label mq-label">Built from the work in</p>
     <div class="marquee" aria-label="Papers"><div class="mq-track papers">
-      <span>Bayer &amp; McCreight<i>1970</i></span><span>LeanStore<i>ICDE 2018</i></span><span>Umbra<i>CIDR 2020</i></span><span>Rethinking Logging<i>SIGMOD 2020</i></span><span>vmcache<i>SIGMOD 2023</i></span><span>What Modern NVMe Can Do<i>VLDB 2023</i></span><span>LeanStore for NVMe<i>VLDB 2024</i></span><span>Autonomous Commit<i>SIGMOD 2025</i></span><span>Predictive Translation<i>SIGMOD 2026</i></span>
-      <span aria-hidden="true">Bayer &amp; McCreight<i>1970</i></span><span aria-hidden="true">LeanStore<i>ICDE 2018</i></span><span aria-hidden="true">Umbra<i>CIDR 2020</i></span><span aria-hidden="true">Rethinking Logging<i>SIGMOD 2020</i></span><span aria-hidden="true">vmcache<i>SIGMOD 2023</i></span><span aria-hidden="true">What Modern NVMe Can Do<i>VLDB 2023</i></span><span aria-hidden="true">LeanStore for NVMe<i>VLDB 2024</i></span><span aria-hidden="true">Autonomous Commit<i>SIGMOD 2025</i></span><span aria-hidden="true">Predictive Translation<i>SIGMOD 2026</i></span>
+      <span>Bayer &amp; McCreight<i>1970</i></span><span>LeanStore<i>ICDE 2018</i></span><span>Umbra<i>CIDR 2020</i></span><span>Rethinking Logging<i>SIGMOD 2020</i></span><span>What Modern NVMe Can Do<i>VLDB 2023</i></span><span>LeanStore for NVMe<i>VLDB 2024</i></span><span>Autonomous Commit<i>SIGMOD 2025</i></span><span>Predictive Translation<i>SIGMOD 2026</i></span>
+      <span aria-hidden="true">Bayer &amp; McCreight<i>1970</i></span><span aria-hidden="true">LeanStore<i>ICDE 2018</i></span><span aria-hidden="true">Umbra<i>CIDR 2020</i></span><span aria-hidden="true">Rethinking Logging<i>SIGMOD 2020</i></span><span aria-hidden="true">What Modern NVMe Can Do<i>VLDB 2023</i></span><span aria-hidden="true">LeanStore for NVMe<i>VLDB 2024</i></span><span aria-hidden="true">Autonomous Commit<i>SIGMOD 2025</i></span><span aria-hidden="true">Predictive Translation<i>SIGMOD 2026</i></span>
     </div></div>
   </div>
   <div class="verticals">

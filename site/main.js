@@ -51,12 +51,12 @@ const STORY = [
   [.21, .27, 'Wide nodes keep the tree shallow: <b>three or four seeks</b> find any key.'],
   [.27, .32, 'Each seek waits for the arm to move and the platter to <b>come round</b>.'],
   [.40, .47, 'Then storage moved to <b>flash</b>.'],
-  [.555, .67, 'An NVMe drive reads <b>thousands of pages at once</b>, across all of its chips.'],
-  [.72, .83, 'And the pages you use most <b>stay in memory</b>.'],
+  [.555, .67, 'With many reads in flight, the same drive answered <b>about 240,000 a second</b>.'],
+  [.72, .83, 'Pages already in RAM skip the drive: a lookup takes <b>under a microsecond</b>.'],
 ];
 const HEADS = [
   [.32, .40, '01 — The lane', 'Every read waits<br>for the platter.'],
-  [.47, .545, '02 — NVMe', 'Flash reads any page<br>in tens of microseconds.'],
+  [.47, .545, '02 — NVMe', 'Flash reads a random page<br>in about 25 microseconds.'],
   [.675, .835, '03 — Waraq', 'Built to keep that drive busy,<br>from every core at once.'],
 ];
 let capI = -1, headI = -1;
@@ -127,18 +127,20 @@ function choreograph(p, st) {
   const mv = seg(p, PH.dive1, PH.dive1 + .02) * (1 - seg(p, .82, .84));
   meter.style.opacity = mv;
   const k1 = ease(seg(p, PH.warp0 + .01, .53)), k2 = ease(seg(p, .73, .81));
-  const lnS = Math.log(8.3e6), lnN = Math.log(8e4), lnM = Math.log(100);
+  const lnS = Math.log(4.2e6), lnN = Math.log(2.5e4), lnM = Math.log(500);
   const ns = Math.exp(lnS + (lnN - lnS) * k1 + (lnM - lnN) * k2);
-  $('#mV').textContent = fmtLat(ns);
+  $('#mV').textContent = k2 > .97 ? '< 1 µs' : fmtLat(ns);
+  $('#meter .m-read .label').textContent = k2 > .5 ? 'for one lookup in RAM' : 'to read one 4 KiB page';
   const pos = 3 + k1 * 44 + k2 * 48;
   $('#mFill').style.width = pos + '%'; $('#mNeedle').style.left = pos + '%';
   const passed = pos >= 46.5;
   $('#mSsd').classList.toggle('on', passed);
   $('#mChip').style.opacity = passed && p < .6 ? 1 : 0;
-  const med = k2 > .5 ? 'Memory' : k1 > .5 ? 'NVMe flash' : 'Magnetic disk';
+  const med = k2 > .5 ? 'RAM' : k1 > .5 ? 'NVMe flash' : 'Magnetic disk';
   $('#hMed').textContent = med;
-  $('#hLat').textContent = fmtLat(ns);
+  $('#hLat').textContent = k2 > .97 ? '< 1 µs' : fmtLat(ns);
   $('#hRpm').textContent = k1 > .3 ? '—' : '7,200';
+  const src = mv > .5; $('#hHint').style.display = src ? 'none' : ''; $('#hSrc').style.display = src ? 'block' : 'none';
   $('#hTrk').textContent = st && st.scene > .5 ? 'flash · 4 KiB pages' : '172 · 4 KiB sectors';
   hudL.style.opacity = hudR.style.opacity = heroIn.v * (1 - seg(p, .02, .05)) + seg(p, PH.dive1, PH.dive1 + .02) * (1 - seg(p, .82, .84));
   // the etched side and the ladder
@@ -280,8 +282,8 @@ const hlCode = code => code.split('\n').map(hlLine).join('');
 const ED = [
   { file: 'src/main.rs · open', say: 'A store is <u>four files</u>. Create it once; <u>open</u> runs recovery after any crash.',
     ret: [['files', 'catalog · log · data · versions'], ['workers', 'one per core'], ['recovery', 'on open']],
-    code: `use std::fs::OpenOptions;\nuse waraq::{Devices, WorkerId};\n\nlet file = |name: &str| OpenOptions::new()\n    .read(true).write(true).create(true).open(dir.join(name));\nlet devices = Devices::new(\n    file("catalog")?, file("log")?, file("data")?, file("versions")?,\n);\n\n// a worker per core, a 1 GiB page pool, a 64 MiB log ring each\nlet db = devices.create(cores, 262_144, 64 << 20)?;\n\n// after a restart: the log is read back, committed work is redone\nlet db = devices.open(262_144)?;`,
-    resS: 'ok · 12 ms', res: `created  4 files in ./data\nworkers  8 · one log ring and one I/O ring each\npool     262,144 frames · 1 GiB\n\nreopened after kill -9\nrecovery redo 1,204 records · undo 3 transactions\nready` },
+    code: `use std::fs::OpenOptions;\nuse waraq::WorkerId;\nuse waraq_io::devices::Devices;\n\nlet file = |name: &str| OpenOptions::new()\n    .read(true).write(true).create(true).open(dir.join(name));\nlet devices = Devices::new(\n    file("catalog")?, file("log")?, file("data")?, file("versions")?,\n);\n\n// a worker per core, a 1 GiB page pool, a 64 MiB log ring each\nlet db = devices.create(cores, 262_144, 64 << 20)?;\n\n// after a restart: the log is read back, committed work is redone\nlet db = devices.open(262_144)?;`,
+    resS: 'example', res: `created  4 files in ./data\nworkers  8 · one log ring and one I/O ring each\npool     262,144 frames · 1 GiB\n\nreopened after kill -9\nrecovery redo 1,204 records · undo 3 transactions\nready` },
   { file: 'src/main.rs · transact', say: 'A <u>transaction</u> sees one snapshot. If two write the same key, <u>the first one wins</u>.',
     ret: [['isolation', 'snapshot'], ['conflict', 'first writer wins'], ['commit', 'durable on return']],
     code: `let me = WorkerId(core);\nlet _bound = waraq::wal::worker::bind(core);\n\nlet mut tx = db.begin(me)?;\nlet alice = tx.get(b"acct:alice")?;\ntx.insert(b"acct:alice", b"70")?;\ntx.insert(b"acct:bob", b"130")?;\ntx.commit()?;            // durable when it returns`,
@@ -292,7 +294,7 @@ const ED = [
     resS: 'ok', res: `acct:alice = 70\nacct:bob = 130\nacct:carol = 55\nacct:dave = 410\n\n4 rows · 1 leaf · 0 locks taken` },
   { file: 'src/main.rs · commit', say: 'Free the core at once with a <u>pre-commit</u>, and wait for durability only <u>where you need it</u>.',
     ret: [['pre-commit', 'core freed'], ['wait', 'only your own log'], ['eventual', 'opt-in']],
-    code: `use waraq::Durability;\n\n// pre-commit: the core goes back to work immediately\nlet ack = tx.precommit()?;\nreply_later(ack);\n\n// ...and somewhere else\nack.wait()?;             // returns once the commit is durable\n\n// or answer once the log write is issued, per store or per transaction\nlet db = db.with_durability(Durability::Eventual);`,
+    code: `use waraq::txn::db::Durability;\n\n// pre-commit: the core goes back to work immediately\nlet ack = tx.precommit()?;\nreply_later(ack);\n\n// ...and somewhere else\nack.wait()?;             // returns once the commit is durable\n\n// or answer once the log write is issued, per store or per transaction\nlet db = db.with_durability(Durability::Eventual);`,
     resS: 'ok', res: `precommit  worker 3 free after 1 record\nwait       log 3 durable · depends on log 1 (read from it)\n           log 1 durable · acknowledged\n\nlogs 0, 2, 4–7 were never waited on` },
 ];
 let edI = 0, runTimer;
@@ -304,7 +306,7 @@ function renderEd(i) {
   $('#eNote').textContent = 'Names follow the current source and may change before 1.0';
   $('#eFile').textContent = e.file;
   $('#eReq').innerHTML = hlCode(e.code);
-  $('#eResS').textContent = 'press Run ▸';
+  $('#eResS').textContent = 'press Run ▸ · example output';
   $('#eRes').innerHTML = '<span class="l"><span class="c">// cargo run</span></span>';
   gsap.fromTo(['#eSay', '#eReq'], { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: .45, stagger: .05 });
   clearTimeout(runTimer); runTimer = setTimeout(run, 2600);
@@ -344,7 +346,7 @@ $$('#eIdx li').forEach((li, i) => li.addEventListener('click', () => ePin.go(i))
     line.style.strokeDashoffset = L2 * (1 - k); clipR.setAttribute('width', W * k);
     vls.forEach((v, i) => v.setAttribute('opacity', i / vls.length < k ? 1 : 0));
     const c = 1 + k * 13, v = val(c);
-    $('#tipV').textContent = '×' + v.toFixed(1); $('#tipM').textContent = `${Math.round(c)} core${Math.round(c) > 1 ? 's' : ''}`;
+    $('#tipV').textContent = '×' + v.toFixed(1); $('#tipM').textContent = `${Math.round(c)} thread${Math.round(c) > 1 ? 's' : ''}`;
     const r = wrap.getBoundingClientRect(), px = xOf(c) / W * r.width, py = yOf(v) / H * r.height;
     $('#tipDot').style.transform = `translate(${px}px, ${py}px)`;
     const right = px > r.width * .55; tip.classList.toggle('right', right);
@@ -402,7 +404,7 @@ Memory speed while your data fits, NVMe speed when it doesn't.
 
 ## What it is
 - a B+tree of 4 KiB slotted pages, byte-ordered keys, opaque values
-- pages in use stay in memory; cold pages cool, then leave (one read brings one back)
+- pages in use stay in RAM; cold pages cool, then leave (one 4 KiB read brings one back)
 - snapshot isolation, first writer wins, versions kept as deltas per worker
 - one worker per core: its own log, its own I/O ring, many tasks
 - crash recovery: redo committed work, undo the rest
