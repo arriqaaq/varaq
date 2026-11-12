@@ -1,0 +1,24 @@
+[package]
+name = "web"
+description = "The browser's JavaScript API over a Waraq store in the Origin Private File System."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+waraq.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+io = { workspace = true, features = ["opfs"] }
+wasm-bindgen = "=0.2.129"
+wasm-bindgen-futures = "=0.4.79"
+js-sys = "=0.3.106"
+
+[lints]
+workspace = true

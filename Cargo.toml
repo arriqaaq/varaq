@@ -1,0 +1,55 @@
+[workspace]
+resolver = "3"
+members = ["crates/waraq", "crates/io", "crates/exec", "crates/web", "crates/calc"]
+default-members = ["crates/waraq", "crates/io"]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.95"
+license = "Apache-2.0"
+repository = "https://github.com/arriqaaq/waraq"
+authors = ["arriqaaq"]
+
+[workspace.dependencies]
+waraq = { path = "crates/waraq", version = "=0.0.1" }
+io = { path = "crates/io", version = "=0.0.1" }
+calc = { path = "crates/calc", version = "=0.0.1" }
+thiserror = { version = "2", default-features = false }
+libc = "0.2"
+
+[workspace.lints.rust]
+unsafe_code       = "deny"
+unreachable_pub   = "warn"
+rust_2018_idioms  = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+all      = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+
+module_name_repetitions = "allow"
+missing_errors_doc      = "allow"
+missing_panics_doc      = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss           = "allow"
+similar_names            = "allow"
+too_many_lines           = "allow"
+
+dbg_macro      = "deny"
+print_stdout   = "warn"
+todo           = "deny"
+unimplemented  = "deny"
+unwrap_used    = "warn"
+expect_used    = "warn"
+missing_safety_doc = "allow"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
+[profile.web-release]
+inherits = "release"
+opt-level = "z"
+lto = true
+debug = false
+codegen-units = 1

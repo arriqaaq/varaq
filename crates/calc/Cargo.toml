@@ -1,0 +1,14 @@
+[package]
+name = "calc"
+description = "The kernel's pure functions: scan chunks, log placement, chain walks, searches."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

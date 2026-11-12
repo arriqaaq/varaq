@@ -1,0 +1,20 @@
+[package]
+name = "waraq"
+description = "The storage kernel: node layout, optimistic latches, the B+tree, the buffer manager."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+calc.workspace = true
+crc32c = "0.6"
+
+[features]
+stats = []
+
+[lints]
+workspace = true
