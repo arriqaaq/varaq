@@ -35,7 +35,7 @@ ScrollTrigger.create({ start: () => innerHeight * 9.1, end: 'max', onToggle: s =
 $('#cargo').addEventListener('click', () => { navigator.clipboard?.writeText('cargo add waraq'); const c = $('#cargo .cp'); c.textContent = '✓'; setTimeout(() => c.textContent = '⧉', 1200); });
 
 /* =========================================================
-   00 · THE PLATTER: disk → lane → past the SSD → the etched tree
+   00 · THE DISK: a track becomes a lane, the lane becomes flash, the camera rises to the SSD
    ========================================================= */
 const canvas = $('#gl');
 const cap = $('#formCap'), hero = $('#hero'), hudL = $('#hudL'), hudR = $('#hudR'), scrimT = $('#scrimT'), scrimB = $('#scrimB');
@@ -49,13 +49,13 @@ const STORY = [
   [.09, .15, '1970. The B-tree is designed for <b>spinning disks</b>.'],
   [.15, .21, 'One node fills one disk block, so <b>one seek reads one node</b>.'],
   [.21, .27, 'Wide nodes keep the tree shallow: <b>three or four seeks</b> find any key.'],
-  [.27, .32, 'Each seek waits for the arm to move and the platter to <b>come round</b>.'],
+  [.27, .32, 'Each seek waits for the arm to move and the disk to <b>spin round</b>.'],
   [.40, .47, 'Then storage moved to <b>flash</b>.'],
   [.555, .67, 'With many reads in flight, the same drive answered <b>about 240,000 a second</b>.'],
   [.72, .83, 'Pages already in RAM skip the drive: a lookup takes <b>under a microsecond</b>.'],
 ];
 const HEADS = [
-  [.32, .40, '01 — The lane', 'Every read waits<br>for the platter.'],
+  [.32, .40, '01 — The track', 'Every read waits<br>for the disk to turn.'],
   [.47, .545, '02 — NVMe', 'Flash reads a random page<br>in about 25 microseconds.'],
   [.675, .835, '03 — Waraq', 'Built to keep that drive busy,<br>from every core at once.'],
 ];
@@ -75,21 +75,11 @@ function nextRole() {
   gsap.to(rot, { opacity: 0, y: -12, filter: 'blur(6px)', duration: .22, ease: 'power2.in', onComplete: () => { rot.textContent = ROLES[roleIdx]; gsap.fromTo(rot, { opacity: 0, y: 12, filter: 'blur(6px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: .42, ease: 'power3.out' }); } });
 }
 
-// intro: the platter spins up while the first captions play; scrolling is never locked
+// on load the words come in while the disk spins up; scrolling is never locked
 gsap.set(['.pill', '.h1 .ln', '.hero-sub', '.cta-row'], { opacity: 0, y: 30 });
-const INTRO = [[.2, 'A platter. <b>Seven thousand two hundred</b> turns a minute.'], [1.9, 'Under the arm, one track. On it, <b>one B-tree node</b>.']];
-const introTl = gsap.timeline({ onComplete: () => endIntro(false) });
-if (platter) introTl.to(platter.state, { spin: 1, duration: 2.6, ease: 'power2.inOut' }, 0);
-INTRO.forEach(([t, s], k) => {
-  introTl.call(() => { cap.innerHTML = s; }, null, t);
-  introTl.fromTo(cap, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: .45 }, t);
-  introTl.to(cap, { opacity: 0, duration: .3 }, (INTRO[k + 1]?.[0] ?? 3.6) - .35);
-});
+if (platter) gsap.to(platter.state, { spin: 1, duration: 2.6, ease: 'power2.inOut' });
 function endIntro(fast) {
   if (introDone) return; introDone = true;
-  if (fast) introTl.progress(1, true);
-  gsap.to(cap, { opacity: 0, duration: .3 });
-  if (platter) platter.state.spin = 1;
   document.body.classList.remove('intro');
   hero.classList.add('live');
   const d0 = fast ? .2 : .3;
@@ -101,7 +91,7 @@ $('#skip').addEventListener('click', () => endIntro(true));
 addEventListener('wheel', () => { if (!introDone) endIntro(true); }, { passive: true });
 addEventListener('touchmove', () => { if (!introDone) endIntro(true); }, { passive: true });
 addEventListener('keydown', e => { if (!introDone && [' ', 'ArrowDown', 'PageDown', 'Enter'].includes(e.key)) endIntro(true); });
-if (reduced) endIntro(true);
+endIntro(reduced);
 
 function choreograph(p, st) {
   // hero and its HUD
@@ -133,6 +123,7 @@ function choreograph(p, st) {
   $('#meter .m-read .label').textContent = k2 > .5 ? 'for one lookup in RAM' : 'to read one 4 KiB page';
   const pos = 3 + k1 * 44 + k2 * 48;
   $('#mFill').style.width = pos + '%'; $('#mNeedle').style.left = pos + '%';
+  $('#ssdName').style.opacity = st ? seg(p, .6, .63) * (1 - seg(p, .835, .85)) : 0;
   const passed = pos >= 46.5;
   $('#mSsd').classList.toggle('on', passed);
   $('#mChip').style.opacity = passed && p < .6 ? 1 : 0;
@@ -357,7 +348,7 @@ $$('#eIdx li').forEach((li, i) => li.addEventListener('click', () => ePin.go(i))
   ScrollTrigger.create({ trigger: '#proof', start: 'top top', end: 'bottom bottom', scrub: .5, onUpdate: s => set(Math.max(.02, seg(s.progress, .08, .86))) });
 })();
 
-/* 07 · CLOSE: the platter returns as a dotted horizon of tracks */
+/* 07 · CLOSE: the disk returns as a dotted horizon of tracks */
 (() => {
   const cv = $('#horizon'), ctx = cv.getContext('2d'); let w = 0, h = 0, vis = false;
   const DPR = Math.min(2, devicePixelRatio || 1);

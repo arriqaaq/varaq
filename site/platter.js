@@ -299,10 +299,10 @@ const TAN = [-Math.sin(ANG), 0, Math.cos(ANG)];
 const BN = [Math.cos(ANG), 0, Math.sin(ANG)];
 const BT = v3.mul(BN, -1);                              // the stick's long axis: across the lane, left to right on screen
 const BC = v3.add(DIVE, v3.mul(BT, -0.36));            // the lane runs over its second flash chip
-const T0 = [0, 0, 0.02], D0 = 4.05, DIR0 = v3.norm([0.0, 1, 0.92]);
+const T0 = [0, 0, 0.0], D0 = 3.72, DIR0 = v3.norm([0.0, 1, 0.8]);
 const DIR1 = v3.norm(v3.add(v3.mul(TAN, -1), [0, 0.085, 0]));
 const D1 = 0.0115;
-const DS = 2.7, DIRS = v3.norm(v3.add([0, 1, 0], v3.mul(TAN, -0.06)));
+const DS = 2.7, DIRS = v3.norm(v3.add([0, 1, 0], v3.mul(TAN, -0.004)));
 const TS = v3.add(BC, v3.mul(TAN, 0.0));
 
 // phases of the hero's scroll progress s (0..1)
@@ -332,7 +332,7 @@ function cameraAt(s, t, mx, my, W, H) {
     dist = Math.exp(Math.log(D1) + (Math.log(DS) - Math.log(D1)) * e) * (1 + .22 * side);
     dir = v3.norm(v3.mix(DIR1, DIRS, smooth(0, .18, e)));
   }
-  const o = Math.min(1, dist / 1.5);
+  const o = Math.min(1, dist / 1.5) * (1 - smooth(PH.warp0, PH.morph0, s));
   const ay = mx * .16 * o, ax = -my * .08 * o;
   const cy = Math.cos(ay), sy = Math.sin(ay);
   dir = [dir[0] * cy + dir[2] * sy, dir[1], -dir[0] * sy + dir[2] * cy];

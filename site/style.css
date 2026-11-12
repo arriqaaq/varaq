@@ -670,3 +670,5 @@ body:not(.intro) .skip{display:none}
 
 .meter{width:min(780px,52vw)}
 .h-src{display:none;line-height:1.7;color:var(--grey-3)!important}
+
+.ssd-name{position:absolute;left:0;right:0;top:67vh;text-align:center;color:var(--grey);opacity:0;pointer-events:none}
