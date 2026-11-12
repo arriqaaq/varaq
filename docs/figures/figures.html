@@ -1,0 +1,154 @@
+<!doctype html>
+<!-- The README's figures. Each <section> is screenshotted to docs/images/<id>.png at 2x
+     (docs/figures/render.js). Every statement drawn here is checked against the code in crates/varaq. -->
+<html lang="en"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Naskh+Arabic:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0B0B0D;--card:#141417;--card2:#1B1B1F;--line:rgba(255,255,255,.12);--line2:rgba(255,255,255,.22);--fg:#EDEDEF;--fg2:#B9BAC0;--mute:#83858D;
+  --lav:#B7A8FF;--blue:#7FA7FF;--teal:#5FD3C4;--amber:#F2B45A;--grad:linear-gradient(95deg,#E6DEFF 0%,#B7C2FF 45%,#A4E8E1 100%)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#000;font-family:Geist,system-ui,sans-serif;color:var(--fg);padding:20px}
+section{width:1200px;background:var(--bg);border-radius:22px;padding:44px 48px;margin-bottom:24px;position:relative;overflow:hidden}
+.k{font-family:"JetBrains Mono",monospace;font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--mute)}
+h2{font-weight:500;font-size:30px;letter-spacing:-.02em;margin:8px 0 6px}
+.sub{color:var(--fg2);font-size:16px;margin-bottom:28px;max-width:960px;line-height:1.45}
+.g{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.box h3{font-weight:500;font-size:17px;margin-bottom:6px}
+.box p{color:var(--fg2);font-size:13.5px;line-height:1.45}
+.m{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--fg2)}
+.tag{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line2);border-radius:5px;padding:2px 6px;color:var(--fg2)}
+.tag.sh{border-style:dashed}
+.row{display:flex;gap:14px}
+.arrow{color:var(--mute);font-size:22px;display:flex;align-items:center;justify-content:center}
+.note{color:var(--mute);font-size:13px;margin-top:22px;line-height:1.5}
+
+/* banner */
+#banner{height:330px;display:flex;flex-direction:column;justify-content:center;background:radial-gradient(70% 90% at 85% 10%,rgba(127,167,255,.16),transparent 60%),radial-gradient(60% 80% at 10% 100%,rgba(95,211,196,.12),transparent 60%),var(--bg)}
+#banner .name{display:flex;align-items:baseline;gap:18px}
+#banner .name b{font-weight:500;font-size:88px;letter-spacing:-.045em;line-height:1}
+#banner .name i{font-style:normal;font-family:"Noto Naskh Arabic",serif;font-size:48px;color:var(--mute)}
+#banner .t{font-size:26px;color:var(--fg2);margin-top:16px;letter-spacing:-.01em}
+#banner .meta{margin-top:26px;display:flex;gap:10px}
+#banner .disc{position:absolute;right:-60px;top:50%;transform:translateY(-50%);width:420px;height:420px;border-radius:50%;
+  background:repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.06) 0 1px,transparent 1px 9px),conic-gradient(from 210deg,rgba(255,255,255,.02),rgba(183,194,255,.14),rgba(255,255,255,.02),rgba(164,232,225,.12),rgba(255,255,255,.02));opacity:.9}
+#banner .disc::after{content:"";position:absolute;inset:44%;border-radius:50%;background:var(--bg);border:1px solid var(--line2)}
+
+/* layers */
+.layer{display:grid;grid-template-columns:190px 1fr;gap:20px;align-items:stretch;margin-bottom:14px}
+.layer .lname{display:flex;flex-direction:column;justify-content:center}
+.layer .lname b{font-weight:500;font-size:19px}
+.layer .lname span{color:var(--mute);font-size:13px;margin-top:4px;line-height:1.4}
+.workers{display:grid;grid-template-columns:repeat(4,1fr) 170px;gap:10px}
+.wk{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.wk .wn{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--lav);margin-bottom:8px}
+.wk .p{font-size:12.5px;color:var(--fg2);padding:5px 8px;border-radius:7px;background:var(--card2);margin-top:5px}
+.shared{border:1px dashed var(--line2);border-radius:12px;padding:12px;background:rgba(255,255,255,.02)}
+.shared .p{font-size:12.5px;color:var(--fg2);padding:5px 8px;border-radius:7px;background:var(--card2);margin-top:5px}
+.legend{display:flex;gap:18px;margin-top:6px;color:var(--mute);font-size:13px}
+.legend i{display:inline-block;width:22px;height:12px;border-radius:4px;vertical-align:-1px;margin-right:6px}
+
+/* read path */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.step .n{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--blue);margin-bottom:6px}
+.lane{display:grid;grid-template-columns:1fr 34px 1fr 34px 1fr 34px 1fr;align-items:stretch;margin-top:18px}
+.lane .box{padding:14px 16px}
+.hot{border-color:rgba(127,167,255,.55)}
+.warm{border-color:rgba(242,180,90,.55)}
+.ok{border-color:rgba(95,211,196,.55)}
+</style></head><body>
+
+<section id="banner">
+  <div class="disc"></div>
+  <div class="name"><b>Varaq</b><i lang="ar">ورق</i></div>
+  <div class="t">A fast embedded B+tree in Rust, with ACID transactions.</div>
+  <div class="meta"><span class="tag">0.1.0</span><span class="tag">snapshot isolation</span><span class="tag">crash recovery</span><span class="tag">files · memory · OPFS</span></div>
+</section>
+
+<section id="layers">
+  <div class="k">How Varaq is built</div>
+  <h2>Four layers, and what each worker owns</h2>
+  <p class="sub">A transaction runs on a worker its thread names. What it appends to on every operation is its worker's own; the parts drawn dashed are shared by every worker.</p>
+
+  <div class="layer">
+    <div class="lname"><b>Transactions</b><span>snapshot isolation, first writer wins</span></div>
+    <div class="workers">
+      <div class="wk"><div class="wn">worker 0</div><div class="p">log ring</div><div class="p">snapshot slot</div><div class="p">list of commits</div><div class="p">version tree</div></div>
+      <div class="wk"><div class="wn">worker 1</div><div class="p">log ring</div><div class="p">snapshot slot</div><div class="p">list of commits</div><div class="p">version tree</div></div>
+      <div class="wk"><div class="wn">worker 2</div><div class="p">log ring</div><div class="p">snapshot slot</div><div class="p">list of commits</div><div class="p">version tree</div></div>
+      <div class="wk"><div class="wn">worker 3</div><div class="p">log ring</div><div class="p">snapshot slot</div><div class="p">list of commits</div><div class="p">version tree</div></div>
+      <div class="shared"><div class="wn m" style="color:var(--mute)">shared</div><div class="p">clock</div><div class="p">pacing lock (writes)</div></div>
+    </div>
+  </div>
+
+  <div class="layer">
+    <div class="lname"><b>B+tree</b><span>each key's newest version</span></div>
+    <div class="row">
+      <div class="box shared" style="flex:1.3"><h3>4 KiB slotted pages</h3><p>A 48-byte header, 12-byte slots in key order, keys and values in a heap growing from the end. Fence keys bound each page; a shared prefix is stored once.</p></div>
+      <div class="box shared" style="flex:1"><h3>Optimistic latches</h3><p>A reader checks a page's version instead of taking a lock; after two refused tries it holds the leaf shared.</p></div>
+      <div class="box shared" style="flex:1"><h3>Right links</h3><p>Each leaf names its right neighbour, so a scan walks the leaf level.</p></div>
+    </div>
+  </div>
+
+  <div class="layer">
+    <div class="lname"><b>Buffer pool</b><span>pages in memory</span></div>
+    <div class="row">
+      <div class="box shared" style="flex:1"><h3>Frames</h3><p>A fixed array of 4 KiB frames, split into up to 64 partitions; each worker's version tree has a pool of its own.</p></div>
+      <div class="box shared" style="flex:1"><h3>Predictive translation</h3><p>Page id to frame through a table, with the preferred frame read while the table is probed.</p></div>
+      <div class="box shared" style="flex:1"><h3>Cooling and in-flight reads</h3><p>With no frame free, pages are sampled into a cooling queue; a miss is one read, shared by threads that need the page.</p></div>
+    </div>
+  </div>
+
+  <div class="layer" style="margin-bottom:0">
+    <div class="lname"><b>Devices</b><span>behind two traits</span></div>
+    <div class="row">
+      <div class="box" style="flex:1"><h3>catalog</h3><p>Two alternating slots: the root, the clock, where recovery starts.</p></div>
+      <div class="box shared" style="flex:1"><h3>log</h3><p>One ring per worker; one barrier (fdatasync) at a time covers the ring writes finished before it.</p></div>
+      <div class="box" style="flex:1"><h3>data</h3><p>The tree's pages, each checksummed over its bytes and its id.</p></div>
+      <div class="box" style="flex:1"><h3>versions</h3><p>The version trees' pages; emptied when the store opens.</p></div>
+    </div>
+  </div>
+  <div class="legend" style="margin-top:18px"><span><i style="background:var(--card);border:1px solid var(--line)"></i>a worker's own</span><span><i style="border:1px dashed var(--line2)"></i>shared</span><span class="m">files (pread/pwrite) · memory · io_uring read path (Linux) · OPFS (WebAssembly)</span></div>
+</section>
+
+<section id="read">
+  <div class="k">Reading a key</div>
+  <h2>A hit, a miss, and a full pool</h2>
+  <p class="sub">At every level a lookup searches the page, checks that no writer changed it, and turns the child's page id into the frame that holds it.</p>
+  <div class="steps">
+    <div class="box hot step"><div class="n">1 · hit</div><h3>The page is in memory</h3><p>The preferred frame, computed from the id, is read while the translation table is probed. If the table names that frame and the frame still holds the page, the hit has taken no lock.</p></div>
+    <div class="box warm step"><div class="n">2 · miss</div><h3>One read</h3><p>The first thread to miss claims the page's row in the in-flight table and issues one 4 KiB read; a second thread missing on it waits on that row. The CRC-32C over the page id and the bytes is checked before the table names the page.</p></div>
+    <div class="box ok step"><div class="n">3 · pool full</div><h3>Cool, then evict</h3><p>When no frame is free, the thread that missed samples hot pages into a cooling queue (about 10% of the pool). A cooling page that is touched warms back without a read; only pages that reach the old end untouched are evicted, a changed one written first, after its log records are durable.</p></div>
+  </div>
+  <div class="lane">
+    <div class="box"><span class="m">root</span><p style="margin-top:6px">search the page · check the version · translate the child</p></div><div class="arrow">→</div>
+    <div class="box"><span class="m">inner page</span><p style="margin-top:6px">the same three steps</p></div><div class="arrow">→</div>
+    <div class="box"><span class="m">leaf</span><p style="margin-top:6px">the key's newest version</p></div><div class="arrow">→</div>
+    <div class="box"><span class="m">visibility</span><p style="margin-top:6px">walk back in the writer's version tree if the snapshot cannot see it</p></div>
+  </div>
+</section>
+
+<section id="commit">
+  <div class="k">Committing</div>
+  <h2>Pre-commit, then acknowledgement</h2>
+  <p class="sub">A version names its writer by worker and start timestamp, so committing rewrites no version: pre-commit is one log record, one clock bump and one entry in the worker's list of commits.</p>
+  <div class="steps">
+    <div class="box hot step"><div class="n">1 · write</div><h3>insert / remove</h3><p>The version it replaces moves to the worker's own version tree; the new version is installed under the leaf's exclusive latch, then one record is appended to the worker's log ring. A write over a version the snapshot cannot see is refused with <span class="m">Conflict</span>.</p></div>
+    <div class="box warm step"><div class="n">2 · pre-commit</div><h3>Visible, worker free</h3><p>The commit record is appended, a commit timestamp is taken from the clock, and one entry in the worker's list of commits publishes every version the transaction wrote. The worker is free for the next transaction at once.</p></div>
+    <div class="box ok step"><div class="n">3 · acknowledgement</div><h3>Durable when it returns</h3><p>The client waits until its own record is durable, other workers' logs are durable up to the changes its pages depend on, and every transaction it read from or wrote over is acknowledged. One shared barrier makes the finished ring writes durable.</p></div>
+  </div>
+  <p class="note">With <span class="m">Durability::Eventual</span> a commit is answered once its records, and those it depends on, are written, while its worker's undurable log stays under 1 MiB by default; a page is still never written ahead of its log.</p>
+</section>
+
+<section id="values">
+  <div class="k">Values of any size</div>
+  <h2>Three homes for a value</h2>
+  <p class="sub">The thresholds count the stored value, which carries a 19-byte version header in front of the client's bytes.</p>
+  <div class="steps">
+    <div class="box hot step"><div class="n">in the leaf</div><h3>Small values</h3><p>A value stays in its leaf unless its entry (key, stored value and 12-byte slot) takes more than 506 bytes, an eighth of the page's 4,048-byte data area.</p></div>
+    <div class="box warm step"><div class="n">a value page</div><h3>Larger values</h3><p>A stored value of 253 bytes or more (234 of the client's) moves to a value page that packs several values. The leaf keeps an 8-byte reference and the 11 bytes a snapshot needs to decide visibility.</p></div>
+    <div class="box ok step"><div class="n">a run of pages</div><h3>Past the data area</h3><p>A value whose entry would not fit in 4,048 bytes becomes one contiguous run of pages, kept out of the log and read up to 256 pages (1 MiB) at a time.</p></div>
+  </div>
+</section>
+
+</body></html>

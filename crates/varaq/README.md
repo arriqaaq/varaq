@@ -1,11 +1,10 @@
+<p align="center"><img src="https://raw.githubusercontent.com/arriqaaq/varaq/main/docs/images/banner.png" alt="Varaq: a fast embedded B+tree in Rust, with ACID transactions" width="100%"></p>
+
 # Varaq
 
-An embedded, transactional key-value store for Rust.
-
-Varaq is a B+tree that runs at in-memory speed while your data fits in RAM and keeps going when it
-does not: pages spill to disk through a buffer manager, and come back when they are needed. Writes
-go through a write-ahead log, transactions commit or abort as a unit, and a store reopens after a
-crash with every acknowledged write in place.
+An embedded, transactional key-value store for Rust: a B+tree of 4 KiB pages that keeps the pages
+in use in memory, reads the rest from its files, and runs every transaction under snapshot
+isolation.
 
 It is a library, not a server. You link it into your program, give it somewhere to keep its pages
 (memory, ordinary files, or the browser's private file system) and call it from your own threads.
@@ -19,18 +18,28 @@ varaq = "0.1"
 > **Status: 0.1, early.** The API and the on-disk format will change before 1.0. Pin a version
 > and expect to recreate stores across upgrades.
 
-## Why Varaq
+The [announcement](https://unchanged.dev/blog/introducing-varaq.html) walks through the design
+layer by layer, with the first measurements; [unchanged.dev/varaq](https://unchanged.dev/varaq/) is
+the project page.
 
-- **Fast in memory, honest on disk.** Readers never take a lock: they use optimistic latches and
-  retry if a writer moved underneath them. Pages that are not needed leave memory; pages that are
-  come back with one read.
-- **Transactions.** Group inserts and removes, scan inside a snapshot, then commit or abort.
-- **Correct or refuse.** Every call either gives the right answer or returns a named error. A torn
-  page, a damaged log or a store whose creation never finished is reported as such, never served as
-  data.
-- **Runs where your code runs.** Linux, macOS and other Unix systems over ordinary files, Linux
-  with `io_uring`, and the browser through WebAssembly and OPFS.
-- **No runtime.** Plain threads. Nothing to spawn, no executor to pick.
+## What it does
+
+- **Reads check versions, not locks.** A lookup reads each page under an optimistic latch: it
+  notes the page's version, copies what it needs and checks the version again, retrying if a
+  writer moved it. After two refused tries it holds the leaf shared.
+- **Larger than memory.** When the pool is full, pages sampled at random cool, and only those left
+  untouched are evicted. A page that is not in memory costs one 4 KiB read, shared by every thread
+  that misses on it.
+- **Transactions.** Snapshot isolation for every transaction; of two that write the same key, the
+  first wins and the second is refused with `Error::Conflict` when it writes. Write skew is
+  possible: snapshot isolation is weaker than serializability.
+- **Durable by default.** A commit returns once its log record is on the device, and a store
+  reopens after a crash with every acknowledged commit in place.
+- **Correct or refuse.** Every data, version and catalog page is checked against a CRC-32C over its
+  bytes and its page id when it is read; log records carry their own. A torn page, a log recovery cannot read or a store whose creation never finished
+  is reported as an error, never served as data.
+- **Runs where your code runs.** Linux, macOS and other Unix systems over ordinary files; an
+  optional `io_uring` read path on Linux; the browser through WebAssembly and OPFS.
 
 ## Quick start
 
@@ -63,7 +72,7 @@ fn main() -> Result<(), varaq::Error> {
 
 ### A transactional store
 
-`Db` adds a write-ahead log and transactions on top of the tree.
+`Db` adds a write-ahead log, transactions and old versions on top of the tree.
 
 ```rust
 use varaq::WorkerId;
@@ -149,8 +158,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### Many threads
 
-A store has a fixed number of workers, chosen when it is made. Each thread that uses the store binds
-itself to a different worker; the store is shared by reference.
+A store has a fixed number of workers, chosen when it is made. A worker runs one transaction at a
+time, so each thread that uses the store binds itself to a different worker; the store is shared
+by reference.
 
 ```rust
 use varaq::WorkerId;
@@ -181,6 +191,40 @@ fn main() -> Result<(), varaq::Error> {
 }
 ```
 
+### Choosing durability
+
+A commit is two steps: **pre-commit** makes the transaction visible and frees its worker, and the
+**acknowledgement** answers the client. `commit()` does both. A store, or one transaction, can ask
+for `Eventual` durability instead of the default `Durable`.
+
+```rust
+use varaq::WorkerId;
+use varaq::txn::db::{Db, Durability};
+
+fn main() -> Result<(), varaq::Error> {
+    let db = Db::with_capacity(1, 1_024)?.with_durability(Durability::Eventual);
+    let me = WorkerId(0);
+    let _bound = varaq::wal::worker::bind(0);
+
+    let mut tx = db.begin(me)?;
+    tx.insert(b"order:1", b"paid")?;
+    let ack = tx.precommit()?; // visible to new snapshots; the worker is free again
+    ack.wait()?;               // under Eventual: answered once the record is written
+
+    // One transaction can ask for more than the store's default.
+    let mut tx = db.begin(me)?;
+    tx.set_durability(Durability::Durable);
+    tx.insert(b"order:2", b"paid")?;
+    tx.commit()?;              // returns once the record is on the device
+    Ok(())
+}
+```
+
+Under `Eventual`, a commit is answered once its records, and those of the transactions it depends
+on, are written but not yet forced, as long as its worker's unforced log stays under 1 MiB (past
+that it waits like a `Durable` commit). A power loss can lose a window of answered commits, but a
+page is never written to the data file ahead of its log.
+
 ### In the browser
 
 With the `opfs` feature and the `wasm32-unknown-unknown` target, a store lives in the browser's
@@ -209,29 +253,70 @@ async fn run() -> Result<(), Refusal> {
 ```
 
 A second engine that tries to open the same store, say from another tab, is refused with
-`Refusal::StoreBusy` until the first lets go.
+`Refusal::StoreBusy` until the first lets go. The `web` package in this repository lets tabs share
+one store through a single leader.
+
+## How it works
+
+<p align="center"><img src="https://raw.githubusercontent.com/arriqaaq/varaq/main/docs/images/layers.png" alt="Four layers: transactions with a log ring, snapshot slot, list of commits and version tree per worker; the B+tree; the buffer pool; and the catalog, log, data and versions devices" width="100%"></p>
+
+**Workers.** A store has a fixed number of workers. Each owns a log ring, a snapshot slot, a list
+of its commits and a version tree for the versions that newer writes replaced, so what a
+transaction appends to on every operation is its own worker's. Shared are the clock, the tree's
+pages and the buffer pool, the log file's barrier, and one store-wide lock every write takes to
+pace checkpoints.
+
+**Pages.** The tree is made of 4 KiB slotted pages: a 48-byte header, a directory of 12-byte slots
+in key order, and keys and values in a heap growing from the end of the page. Fence keys bound what
+each page may hold, so the prefix its keys share is stored once, and each slot keeps the first four
+bytes of its key as an integer so a binary search compares integers.
+
+**Translation.** A parent names its children by page id, so a page may be named from more than one
+place: each leaf names its right neighbour, and a scan walks the leaf level. The id is turned into
+a frame through a table, with the frame predicted from the id read while the table is probed.
+
+<p align="center"><img src="https://raw.githubusercontent.com/arriqaaq/varaq/main/docs/images/read.png" alt="Reading a key: a hit, a miss with one read through the in-flight table, and a full pool that cools pages before evicting them" width="100%"></p>
+
+**Versions.** The tree holds each key's newest version. A write moves the version it replaces into
+its worker's version tree, and a version's 19-byte header names its writer by worker and **start**
+timestamp. A reader decides visibility from the writer's list of commits, with a binary search, so
+committing never has to rewrite a version.
+
+<p align="center"><img src="https://raw.githubusercontent.com/arriqaaq/varaq/main/docs/images/commit.png" alt="Committing: the write installs the version and appends a log record, pre-commit publishes it and frees the worker, and the acknowledgement waits for what it depends on" width="100%"></p>
+
+**The log.** Each worker appends to its own ring; records for the same page are ordered across
+workers by a clock kept per page (the GSN). One barrier at a time makes the ring writes finished
+before it durable. A checkpoint writes the pool back about a tenth at a time, so the store never
+stops for one, and recovery starts from the oldest mark the increments recorded.
+
+<p align="center"><img src="https://raw.githubusercontent.com/arriqaaq/varaq/main/docs/images/values.png" alt="Three homes for a value: in the leaf, on a value page, or as a contiguous run of pages" width="100%"></p>
+
+**Deletes.** A delete installs a removal; once every snapshot is past it and its transaction is
+acknowledged, the entry is removed from its leaf. A leaf left too empty merges with a neighbour, and
+a freed page is written out empty before its id is used again.
+
+The design builds on the line of storage-engine research that began with LeanStore: optimistic
+latches, a cooling stage in place of a replacement list, predictive translation, a log per worker
+with remote flush avoidance and continuous checkpoints, versions stamped with their writer's start
+timestamp, and autonomous commit. The announcement credits each one where it is used.
 
 ## Concepts
 
 | Term | What it means |
 |---|---|
 | **Page** | 4 KiB. The unit the tree, the buffer pool and the files work in. |
-| **Pool pages** | How many pages are kept in memory. A store larger than this spills to its files. |
-| **Worker** | A slot for one thread at a time, with its own log. A thread binds with `varaq::wal::worker::bind(n)` and passes `WorkerId(n)` to the store. Two threads must not share a worker at once. |
-| **Log ring** | Each worker's share of the write-ahead log, in bytes. The log is reused as checkpoints move forward. |
-| **`Error`** | Something the engine refused: a corrupt page, a full store, a device failure. |
+| **Pool pages** | How many pages the tree keeps in memory. Each worker's version tree has a pool of its own, of pool pages ÷ workers (at least 64), so a store holds about twice the pool pages in memory. |
+| **Worker** | A slot for one transaction at a time, with its own log ring. A thread binds with `varaq::wal::worker::bind(n)` and passes `WorkerId(n)` to the store; a `begin` on a worker already running a transaction is refused with `Error::WorkerBusy`. |
+| **Log ring** | Each worker's share of the write-ahead log, in bytes. The ring is reused as checkpoints move forward. |
+| **`Error`** | Something the engine refused: a conflict, a corrupt page, a full store, a device failure. |
 | **`Refusal`** | Why a store could not be created, opened or destroyed over its files; wraps `Error` for everything else. |
-
-Commits are durable by default: a commit returns once its log record is on the device. A store made
-with `.with_durability(Durability::Eventual)` answers once the record is written, and syncs in the
-background with a bounded amount at risk.
 
 ## Cargo features
 
 | Feature | What it adds |
 |---|---|
 | `opfs` | The browser backend (`varaq::io::opfs`), for `wasm32-unknown-unknown`. |
-| `uring` | An `io_uring` backend (`varaq::io::uring`) on Linux. |
+| `uring` | An `io_uring` read path on Linux (`varaq::io::uring`): one ring per worker for page misses, over `O_DIRECT` when opened with `open_direct`. |
 | `stats` | Internal counters, kept per thread so they cost little. Off by default. |
 
 ## What is inside
@@ -245,10 +330,6 @@ background with a bounded amount at risk.
 | `varaq::recovery` | Reopening a store from its checkpoint and log. |
 | `varaq::io` | Backends: files through `pread` and `pwrite`, memory, `io_uring`, OPFS. |
 | `varaq::exec` | Where a worker waits when the page it needs is not in memory. |
-
-The design comes from research on storage engines built for fast SSDs: pages that can be referenced from more
-than one place, a buffer pool that cools pages before evicting them, and a log split per worker so
-threads do not contend on one tail.
 
 ## Examples
 
@@ -264,12 +345,20 @@ cargo build --target wasm32-unknown-unknown --features opfs --example opfs
 
 ## Platforms
 
-- **Linux:** files through `pread`/`pwrite`, or `io_uring` with the `uring` feature.
+- **Linux:** files through `pread`/`pwrite`, with the optional `io_uring` read path.
 - **macOS and other Unix systems:** files through `pread`/`pwrite`. The operating system's page
   cache sits underneath, so numbers taken there are not device numbers.
 - **WebAssembly:** `wasm32-unknown-unknown`, in memory or over OPFS with the `opfs` feature.
 
 The minimum supported Rust version is 1.95.
+
+## Limitations of 0.1
+
+- The miss path is tested for correctness but not yet measured at scale on a dedicated NVMe drive.
+- A long-running reader holds old versions back, and 0.1 does not bound the memory that costs.
+- Single-key deletes and most batched writes were slower than SurrealKV's, an LSM-tree, in the
+  announcement's measurements.
+- The API and the on-disk format will change before 1.0.
 
 ## License
 
