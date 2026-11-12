@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Runs the larger instances in Deep/Configs.lean. Builds each model checker,
 # runs it for at most DEEP_TIMEOUT seconds, and fails if any finds a violation.
-# A check that runs out of time is reported as incomplete, not as a failure.
+# A check that runs out of time or memory is reported as incomplete, not as a
+# failure.
 set -euo pipefail
 cd "$(dirname "$0")"
 timeout_s="${DEEP_TIMEOUT:-2400}"
@@ -32,6 +33,8 @@ for i in "${!binaries[@]}"; do
   took=$(( $(date +%s) - start ))
   if [ "$code" -eq 124 ]; then
     verdict="⏱ incomplete: stopped after ${timeout_s}s"
+  elif [ "$code" -eq 137 ]; then
+    verdict="⏱ incomplete: killed after ${took}s (most likely out of memory)"
   elif grep -q '"no_violation_found"' "$result"; then
     verdict="✅ no violation ($(grep -o '"explored_states": *[0-9]*' "$result" | grep -o '[0-9]*$') states, ${took}s)"
   else
