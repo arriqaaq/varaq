@@ -357,14 +357,16 @@ cargo build --target wasm32-unknown-unknown --features opfs --example opfs
 
 The minimum supported Rust version is 1.95.
 
-## Limitations of 0.1
+## What we are improving
 
-- The miss path is tested for correctness but not yet measured at scale on a dedicated NVMe drive.
-- A long-running reader holds old versions back: until it finishes, the versions file grows, as do
-  each worker's list of commits and queue of removals in memory, and 0.1 bounds neither.
-- Single-key deletes and most batched writes were slower than SurrealKV's, an LSM-tree, in the
-  announcement's measurements.
-- The API and the on-disk format will change before 1.0.
+0.1 is a first release, and the work now is on performance and on the parts not yet measured:
+
+- **Performance at scale.** The miss path is tested for correctness; next is measuring and tuning
+  it on large machines with dedicated NVMe drives.
+- **Deletes and batched writes.** Making single-key deletes and batched writes faster.
+- **Long-running readers.** Bounding the memory a long reader holds: today the versions file, each
+  worker's list of commits and its queue of removals grow until the reader finishes.
+- **A stable format.** The API and the on-disk format will settle before 1.0.
 
 ## License
 
