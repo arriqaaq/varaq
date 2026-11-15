@@ -4,7 +4,7 @@ members = ["crates/varaq", "crates/web"]
 default-members = ["crates/varaq"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.95"
 license = "Apache-2.0"
@@ -12,7 +12,7 @@ repository = "https://github.com/arriqaaq/varaq"
 authors = ["arriqaaq"]
 
 [workspace.dependencies]
-varaq = { path = "crates/varaq", version = "0.1.0" }
+varaq = { path = "crates/varaq", version = "0.1.1" }
 thiserror = { version = "2", default-features = false }
 libc = "0.2"
 

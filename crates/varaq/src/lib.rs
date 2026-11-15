@@ -1,4 +1,5 @@
 #![doc = include_str!("../README.md")]
+#![allow(clippy::doc_markdown)]
 pub mod bufmgr {
     pub mod cooling;
     pub mod fault;

@@ -724,8 +724,6 @@ fn redo_with(
     let mut carried: HashMap<u64, Base> = HashMap::new();
     let mut on_device_now: HashMap<u64, AfterRedo> = HashMap::new();
     let mut torn_based: std::collections::HashSet<u64> = std::collections::HashSet::new();
-    let mut read_whole: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
-    let mut wrote: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
     let mut applied = 0usize;
     let mut effective = std::collections::HashSet::new();
     let mut buf = vec![0u8; crate::PAGE_SIZE];
@@ -778,7 +776,7 @@ fn redo_with(
                     let after = AfterRedo::of(image);
                     let read = after.stamp;
                     on_device_now.insert(item.page, after);
-                    read_whole.insert(item.page);
+                    pending.put(store, pid, &buf)?;
                     Base::At(read)
                 };
                 carried.insert(item.page, read);
@@ -857,7 +855,6 @@ fn redo_with(
         for ((item, page), pid) in group.iter().zip(&pages).zip(ready) {
             let Some(pid) = pid else { continue };
             pending.put(store, pid, page)?;
-            wrote.insert(item.page);
             #[cfg(feature = "stats")]
             if item.op && torn_based.contains(&item.page) {
                 TORN_REBUILT_WITH_CHANGES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -871,12 +868,6 @@ fn redo_with(
         effective.insert((worker, record));
     }
     pending.write_all(store)?;
-    let mut page = vec![0u8; crate::PAGE_SIZE];
-    for &skipped in read_whole.difference(&wrote) {
-        let pid = PageId::new(skipped)?;
-        store.read(pid, &mut page)?;
-        store.write(pid, &page)?;
-    }
     store.barrier()?;
     Ok((applied, on_device_now, effective))
 }
