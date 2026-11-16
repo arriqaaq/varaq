@@ -368,6 +368,20 @@ The minimum supported Rust version is 1.95.
   worker's list of commits and its queue of removals grow until the reader finishes.
 - **A stable format.** The API and the on-disk format will settle before 1.0.
 
+## How it is built
+
+Varaq is developed with models, proofs and verifiers. The design is written down first as formal
+models, in TLA+ among others, and model-checked before the code exists. Proofs tie parts of the
+code to the statements they have to meet. Verifiers run the real engine: deterministic simulation
+testing (DST) that replays crashes and rare interleavings from a seed, property tests, fault
+injection and more. Each check is also run against defects planted on purpose, to show that it can
+fail.
+
+This repository holds the code. The models, tests, proofs and verifiers are redacted from it. Code
+can now be regenerated from a description in days; the evidence that it is right cannot, so the
+code is open source and the evidence stays closed. [unchanged.dev/about](https://unchanged.dev/about/#published) explains that choice, and
+[why models, proofs and verifiers are used together](https://unchanged.dev/about/#plural).
+
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
